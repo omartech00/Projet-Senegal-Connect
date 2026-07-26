@@ -9,6 +9,8 @@ const helmet = require('helmet');
 const cors = require('cors');
 const morgan = require('morgan');
 const env = require('./config/env');
+const swaggerUi = require('swagger-ui-express');
+const specificationSwagger = require('./config/swagger');
 
 const routeHealth = require('./routes/health');
 const routeAuth = require('./routes/auth');
@@ -48,6 +50,25 @@ app.use('/api/forfaits', routeForfaits);
 app.use('/api/factures', routeFactures);
 app.use('/api/tickets', routeTickets);
 app.use('/api/stats', routeStats);
+
+// --- Documentation Swagger/OpenAPI ---
+// helmet() reste actif partout ailleurs ; on désactive seulement la CSP
+// sur cette route précise, car Swagger UI a besoin de scripts inline
+// pour s'afficher — pas de relâchement de sécurité sur le reste de l'API.
+app.use(
+  '/api/docs',
+  helmet({ contentSecurityPolicy: false }),
+  swaggerUi.serve,
+  swaggerUi.setup(specificationSwagger, {
+    customSiteTitle: 'Sénégal Connect — Documentation API',
+  })
+);
+
+// Export brut de la spec, importable dans Postman/Insomnia
+app.get('/api/docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(specificationSwagger);
+});
 
 // --- Swagger UI --- (montée en Phase 11)
 // --- 404 + middleware d'erreurs global --- (montés en Phase 18,
