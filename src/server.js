@@ -8,17 +8,20 @@
 const http = require('http');
 const app = require('./app');
 const env = require('./config/env');
+const logger = require('./config/logger');
 const { verifierConnexion } = require('./config/db');
+
 const serveurHttp = http.createServer(app);
 
 async function demarrer() {
   const bddOk = await verifierConnexion();
   if (!bddOk) {
-    console.error('[server] Démarrage annulé : PostgreSQL inaccessible.');
+    logger.error('[server] Démarrage annulé : PostgreSQL inaccessible.');
     process.exit(1);
   }
+
   serveurHttp.listen(env.port, () => {
-    console.log(`[server] Sénégal Connect démarré sur le port ${env.port} (env: ${env.nodeEnv})`);
+    logger.info(`[server] Sénégal Connect démarré sur le port ${env.port} (env: ${env.nodeEnv})`);
   });
 }
 
