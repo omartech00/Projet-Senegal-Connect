@@ -1,0 +1,46 @@
+{
+  "name": "senegal-connect",
+  "version": "1.0.0",
+  "description": "API REST d'opérateur télécom avec support client en temps réel — Projet TCS L3, UAM Polytech Diamniadio",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "NODE_ENV=test jest --runInBand",
+    "test:cov": "NODE_ENV=test jest --coverage --runInBand",
+    "lint": "eslint src/"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-validator": "^7.3.2",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.11.0",
+    "multer": "^2.2.0",
+    "peer": "^1.0.2",
+    "pg": "^8.22.0",
+    "socket.io": "^4.8.3",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^14.0.1",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "eslint": "^10.8.0",
+    "jest": "^30.4.2",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
+  },
+  "overrides": {
+    "brace-expansion": "5.0.8",
+    "minimatch": "^10.0.0",
+    "glob": "^11.0.0"
+  }
+}
