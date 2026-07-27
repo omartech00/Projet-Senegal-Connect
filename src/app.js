@@ -11,6 +11,7 @@ const morgan = require('morgan');
 const env = require('./config/env');
 const swaggerUi = require('swagger-ui-express');
 const specificationSwagger = require('./config/swagger');
+const gestionnaireErreurs = require('./middleware/erreurs');
 
 const routeHealth = require('./routes/health');
 const routeAuth = require('./routes/auth');
@@ -70,7 +71,9 @@ app.get('/api/docs.json', (req, res) => {
   res.send(specificationSwagger);
 });
 
-// --- Swagger UI --- (montée en Phase 11)
-// --- 404 + middleware d'erreurs global --- (montés en Phase 18,
-// DOIVENT rester les tout derniers `app.use()` du fichier)
+// --- Middleware d'erreurs global ---
+// VERSION MINIMALE (Phase 12). Handler 404 dédié + codes PostgreSQL
+// 23505/23503 ajoutés en Phase 18. DOIT rester le tout dernier app.use().
+app.use(gestionnaireErreurs);
+
 module.exports = app;
