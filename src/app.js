@@ -3,12 +3,14 @@
 // routers, (futurs) handlers d'erreurs. Exporte l'app SANS démarrer
 // l'écoute réseau, pour que Supertest (Phase 32) puisse l'importer
 // directement sans ouvrir de port.
-
+const logger = require('./config/logger');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const morgan = require('morgan');
 const env = require('./config/env');
+const swaggerUi = require('swagger-ui-express');
+const specificationSwagger = require('./config/swagger');
 
 const routeHealth = require('./routes/health');
 const routeAuth = require('./routes/auth');
@@ -32,13 +34,14 @@ app.use(
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
+
 // --- Logging HTTP ---
-// Format 'dev' temporaire, en console directe. Remplacé par un stream
-// vers Winston en Phase 10 (console colorée en dev, JSON en prod,
-// muet en test) — sans changer la position de ce middleware.
-if (env.nodeEnv !== 'test') {
-  app.use(morgan('dev'));
-}
+// Morgan délègue tous ses logs à Winston (niveau "http") via
+// logger.stream. Le silence en test est géré par Winston lui-même
+// (option `silent`), pas par une condition ici.
+app.use(morgan(':method :url :status :response-time ms', { stream: logger.stream }));
+
+
 // --- Routes ---
 app.use('/api/health', routeHealth);
 app.use('/api/auth', routeAuth);
@@ -47,6 +50,25 @@ app.use('/api/forfaits', routeForfaits);
 app.use('/api/factures', routeFactures);
 app.use('/api/tickets', routeTickets);
 app.use('/api/stats', routeStats);
+
+// --- Documentation Swagger/OpenAPI ---
+// helmet() reste actif partout ailleurs ; on désactive seulement la CSP
+// sur cette route précise, car Swagger UI a besoin de scripts inline
+// pour s'afficher — pas de relâchement de sécurité sur le reste de l'API.
+app.use(
+  '/api/docs',
+  helmet({ contentSecurityPolicy: false }),
+  swaggerUi.serve,
+  swaggerUi.setup(specificationSwagger, {
+    customSiteTitle: 'Sénégal Connect — Documentation API',
+  })
+);
+
+// Export brut de la spec, importable dans Postman/Insomnia
+app.get('/api/docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(specificationSwagger);
+});
 
 // --- Swagger UI --- (montée en Phase 11)
 // --- 404 + middleware d'erreurs global --- (montés en Phase 18,

@@ -5,6 +5,7 @@
 // et garantissent qu'aucune requête SQL ne soit construite par concaténation.
 const { Pool } = require('pg');
 const env = require('./env');
+const logger = require('./logger');
 
 const pool = new Pool({
   host: env.db.host,
@@ -20,7 +21,7 @@ const pool = new Pool({
 // Log des erreurs inattendues sur des connexions IDLE du pool
 // (ex. : PostgreSQL redémarre pendant que l'app tourne).
 pool.on('error', (err) => {
-  console.error('[db] Erreur inattendue sur une connexion du pool PostgreSQL :', err.message);
+  logger.error(`[db] Erreur inattendue sur une connexion du pool PostgreSQL : ${err.message}`);
 });
 
 /**
@@ -34,16 +35,13 @@ pool.on('error', (err) => {
  */
 async function query(texte, parametres = []) {
   const debut = Date.now();
-  try {
-    const resultat = await pool.query(texte, parametres);
-    const duree = Date.now() - debut;
-    // Sera remplacé par logger.debug() en Phase 10 (niveau debug = requêtes SQL en dev)
-    if (env.nodeEnv === 'development') {
-      console.log(`[db] ${duree}ms — ${texte.slice(0, 80)}`);
-    }
-    return resultat;
+  try{
+        const resultat = await pool.query(texte, parametres);
+        const duree = Date.now() - debut;
+        logger.debug(`[db] ${duree}ms — ${texte.slice(0, 80)}`);
+        return resultat;
   } catch (erreur) {
-    console.error(`[db] Échec requête : ${texte.slice(0, 80)}`, erreur.message);
+    logger.error(`[db] Échec requête : ${texte.slice(0, 80)} — ${erreur.message}`);
     throw erreur; // propagé au controller, qui décide du code HTTP (voir Phase 18)
   }
 }
@@ -89,7 +87,7 @@ async function verifierConnexion() {
     await pool.query('SELECT 1');
     return true;
   } catch (erreur) {
-    console.error('[db] Impossible de se connecter à PostgreSQL :', erreur.message);
+    logger.error(`[db] Impossible de se connecter à PostgreSQL : ${erreur.message}`);
     return false;
   }
 }
