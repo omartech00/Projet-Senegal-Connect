@@ -10,8 +10,11 @@ const app = require('./app');
 const env = require('./config/env');
 const logger = require('./config/logger');
 const { verifierConnexion } = require('./config/db');
+const initialiserSocket = require('./socket');
 
 const serveurHttp = http.createServer(app);
+const io = initialiserSocket(serveurHttp);
+
 
 async function demarrer() {
   const bddOk = await verifierConnexion();
@@ -22,9 +25,10 @@ async function demarrer() {
 
   serveurHttp.listen(env.port, () => {
     logger.info(`[server] Sénégal Connect démarré sur le port ${env.port} (env: ${env.nodeEnv})`);
+    logger.info('[server] Socket.IO prêt à accepter des connexions authentifiées');
   });
 }
 
 demarrer();
 
-module.exports = serveurHttp;
+module.exports = { serveurHttp, io };
