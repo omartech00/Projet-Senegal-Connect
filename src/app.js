@@ -11,7 +11,7 @@ const morgan = require('morgan');
 const env = require('./config/env');
 const swaggerUi = require('swagger-ui-express');
 const specificationSwagger = require('./config/swagger');
-const gestionnaireErreurs = require('./middleware/erreurs');
+const { gestionnaireErreurs, gestion404 } = require('./middleware/erreurs');
 
 const routeHealth = require('./routes/health');
 const routeAuth = require('./routes/auth');
@@ -71,9 +71,16 @@ app.get('/api/docs.json', (req, res) => {
   res.send(specificationSwagger);
 });
 
+// --- Route inconnue (404) ---
+// Doit être monté après TOUTES les routes déclarées ci-dessus, sinon
+// il intercepterait des requêtes valides avant leur vraie route.
+app.use(gestion404);
+
 // --- Middleware d'erreurs global ---
-// VERSION MINIMALE (Phase 12). Handler 404 dédié + codes PostgreSQL
-// 23505/23503 ajoutés en Phase 18. DOIT rester le tout dernier app.use().
+// Version complète depuis la Phase 17 : conversion des codes
+// PostgreSQL 23505/23503, masquage de la stack trace en production.
+// DOIT rester le tout dernier app.use() du fichier.
 app.use(gestionnaireErreurs);
+
 
 module.exports = app;
