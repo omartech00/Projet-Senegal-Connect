@@ -7,6 +7,7 @@
 
 const logger = require('../config/logger');
 const ticketsService = require('../services/tickets.service');
+const messagesService = require('../services/messages.service');
 
 module.exports = function enregistrerEvenementsSupport(io, socket) {
   const utilisateur = socket.data.user;
@@ -70,5 +71,57 @@ module.exports = function enregistrerEvenementsSupport(io, socket) {
       logger.warn(`[socket] Échec ticket:fermer — ${erreur.message}`);
       if (callback) callback({ succes: false, message: erreur.message });
     }
+  });
+
+  // --- message:envoyer (C→S) ---
+  // Valide l'accès au ticket, assainit le contenu, insère en BDD,
+  // diffuse le message complet à TOUS les participants de la room
+  // (io.to, pas socket.to — l'émetteur voit aussi son propre message
+  // apparaître, comportement standard d'une UI de chat).
+  socket.on('message:envoyer', async ({ ticketId, contenu, type }, callback) => {
+    try {
+      const message = await messagesService.envoyerMessage({
+        ticketId,
+        utilisateur,
+        contenu,
+        type: type || 'texte',
+      });
+
+      io.to(`ticket:${ticketId}`).emit('message:nouveau', message);
+
+      if (callback) callback({ succes: true, message });
+    } catch (erreur) {
+      logger.warn(`[socket] Échec message:envoyer — ${erreur.message}`);
+      if (callback) callback({ succes: false, message: erreur.message });
+    }
+  });
+
+  // --- message:lu (C→S) ---
+  // Marque le message comme lu par l'utilisateur courant, notifie
+  // l'EXPÉDITEUR ORIGINAL (pas le lecteur) via sa room privée, pour
+  // qu'il mette à jour son icône ✓ → ✓✓ en temps réel.
+  socket.on('message:lu', async ({ messageId }, callback) => {
+    try {
+      const message = await messagesService.marquerMessageLu({ messageId, utilisateur });
+
+      io.to(`user:${message.expediteur_id}`).emit('message:statut', {
+        message_id: message.id,
+        statut: 'lu',
+        lu_par: utilisateur.id,
+      });
+      if (callback) callback({ succes: true });
+    } catch (erreur) {
+      logger.warn(`[socket] Échec message:lu — ${erreur.message}`);
+      if (callback) callback({ succes: false, message: erreur.message });
+    }
+  });
+  // --- frappe (C→S) ---
+  // Relais IMMÉDIAT, sans throttle côté serveur — le throttle 1/s et
+  // la disparition auto après 2,5s sont des responsabilités CLIENT
+  // (public/js/app.js, phase frontend), pas de ce handler.
+  // socket.to (pas io.to) : l'émetteur ne reçoit jamais son propre
+  // indicateur de frappe.
+  socket.on('frappe', ({ ticketId }) => {
+    socket.to(`ticket:${ticketId}`).emit('frappe', { nom: utilisateur.nom });
   });
 };

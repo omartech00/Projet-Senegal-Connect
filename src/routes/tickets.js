@@ -122,4 +122,29 @@ router.post('/', verifierJWT, garderRole('client'), validationCreation, asyncHan
  */
 router.patch('/:id/statut', verifierJWT, garderRole('agent', 'admin'), validationId, validationStatut, asyncHandler(ticketsController.changerStatut));
 
+/**
+ * @openapi
+ * /api/tickets/{id}/messages:
+ *   get:
+ *     summary: Historique des messages d'un ticket (pagination par curseur)
+ *     tags: [Tickets]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: avant
+ *         schema: { type: string, format: date-time }
+ *         description: Timestamp — renvoie les 50 messages précédant strictement cette date
+ *     responses:
+ *       200: { description: "50 messages maximum, du plus ancien au plus récent" }
+ *       403:
+ *         description: Ticket non accessible à ce rôle
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Erreur' }
+ */
+router.get('/:id/messages', verifierJWT, validationId, asyncHandler(ticketsController.historiqueMessages));
+
 module.exports = router;

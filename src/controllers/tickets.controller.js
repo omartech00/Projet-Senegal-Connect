@@ -5,6 +5,8 @@
 const { validationResult } = require('express-validator');
 const ApiError = require('../utils/ApiError');
 const ticketsService = require('../services/tickets.service');
+const messagesService = require('../services/messages.service');
+
 
 function formaterErreursValidation(req) {
   const resultat = validationResult(req);
@@ -50,4 +52,9 @@ async function changerStatut(req, res) {
   res.status(200).json({ ticket });
 }
 
-module.exports = { lister, detail, creer, changerStatut };
+async function historiqueMessages(req, res) {
+  const messages = await messagesService.obtenirHistorique(req.params.id, req.user, req.query);
+  res.status(200).json({ data: messages });
+}
+
+module.exports = { lister, detail, creer, changerStatut, historiqueMessages };
