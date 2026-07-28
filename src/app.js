@@ -4,6 +4,7 @@
 // l'écoute réseau, pour que Supertest (Phase 32) puisse l'importer
 // directement sans ouvrir de port.
 const logger = require('./config/logger');
+const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -51,6 +52,12 @@ app.use('/api/forfaits', routeForfaits);
 app.use('/api/factures', routeFactures);
 app.use('/api/tickets', routeTickets);
 app.use('/api/stats', routeStats);
+
+// --- Fichiers uploadés (chat) ---
+// Sert les fichiers partagés en chat. Les noms UUID (middleware/
+// upload.js) empêchent de deviner l'URL d'un fichier d'un autre ticket.
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 
 // --- Documentation Swagger/OpenAPI ---
 // helmet() reste actif partout ailleurs ; on désactive seulement la CSP

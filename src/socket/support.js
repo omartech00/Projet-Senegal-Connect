@@ -124,4 +124,24 @@ module.exports = function enregistrerEvenementsSupport(io, socket) {
   socket.on('frappe', ({ ticketId }) => {
     socket.to(`ticket:${ticketId}`).emit('frappe', { nom: utilisateur.nom });
   });
+
+  // --- fichier:partager (C→S) ---
+  // Reçu APRÈS un upload REST réussi (POST /api/tickets/:id/fichier).
+  // Crée le message en base (type déduit du MIME) et le diffuse à
+  // toute la room, exactement comme message:nouveau pour un message texte.
+  socket.on('fichier:partager', async ({ ticketId, fichierUrl, fichierNom, fichierTaille, mimeType }, callback) => {
+    try {
+      const message = await messagesService.partagerFichier({
+        ticketId, utilisateur, fichierUrl, fichierNom, fichierTaille, mimeType,
+      });
+
+      io.to(`ticket:${ticketId}`).emit('message:nouveau', message);
+
+      if (callback) callback({ succes: true, message });
+    } catch (erreur) {
+      logger.warn(`[socket] Échec fichier:partager — ${erreur.message}`);
+      if (callback) callback({ succes: false, message: erreur.message });
+    }
+  });
+
 };
