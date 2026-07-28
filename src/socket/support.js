@@ -8,6 +8,7 @@
 const logger = require('../config/logger');
 const ticketsService = require('../services/tickets.service');
 const messagesService = require('../services/messages.service');
+const reactionsService = require('../services/reactions.service');
 
 module.exports = function enregistrerEvenementsSupport(io, socket) {
   const utilisateur = socket.data.user;
@@ -140,6 +141,28 @@ module.exports = function enregistrerEvenementsSupport(io, socket) {
       if (callback) callback({ succes: true, message });
     } catch (erreur) {
       logger.warn(`[socket] Échec fichier:partager — ${erreur.message}`);
+      if (callback) callback({ succes: false, message: erreur.message });
+    }
+  });
+
+  // --- message:reaction (C→S) ---
+  // Toggle : clic sur un emoji l'ajoute, re-clic sur le MÊME emoji le
+  // retire (décidé côté service selon l'existence préalable). Diffuse
+  // les compteurs agrégés (pas l'événement brut) à toute la room du
+  // ticket, pour garantir un affichage cohérent chez tous les
+  // participants même en cas de perte d'un événement intermédiaire.
+  socket.on('message:reaction', async ({ messageId, emoji }, callback) => {
+    try {
+      const resultat = await reactionsService.togglerReaction({ messageId, utilisateur, emoji });
+
+      io.to(`ticket:${resultat.ticket_id}`).emit('message:reaction', {
+        message_id: resultat.message_id,
+        reactions: resultat.reactions,
+      });
+
+      if (callback) callback({ succes: true, action: resultat.action });
+    } catch (erreur) {
+      logger.warn(`[socket] Échec message:reaction — ${erreur.message}`);
       if (callback) callback({ succes: false, message: erreur.message });
     }
   });
