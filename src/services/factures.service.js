@@ -7,6 +7,8 @@ const ApiError = require('../utils/ApiError');
 const { reponsePaginee } = require('../utils/ApiResponse');
 const facturesModel = require('../models/factures.model');
 const clientsModel = require('../models/clients.model');
+const notifications = require('../socket/notifications');
+
 
 async function listerFactures({ client_id, statut, periode, page, limite }) {
   const pageNum = parseInt(page, 10) || 1;
@@ -32,13 +34,39 @@ async function creerFacture({ client_id, periode, montant_fcfa, statut, date_ech
       { champ: 'client_id', message: 'Client introuvable', valeur: client_id },
     ]);
   }
-  return facturesModel.creerAvecReference({ client_id, periode, montant_fcfa, statut, date_echeance });
+
+  const facture = await facturesModel.creerAvecReference({ client_id, periode, montant_fcfa, statut, date_echeance });
+
+  notifications.notifier(
+    client.utilisateur_id,
+    'facture_emise',
+    `Nouvelle facture ${facture.reference} de ${facture.montant_fcfa} FCFA`,
+    { facture_id: facture.id, reference: facture.reference }
+  );
+
+  return facture;
 }
+
 async function changerStatutFacture(id, statut) {
   const facture = await facturesModel.trouverParId(id);
   if (!facture) throw ApiError.introuvable('Facture introuvable');
-  return facturesModel.mettreAJourStatut(id, statut);
+
+  const factureMaj = await facturesModel.mettreAJourStatut(id, statut);
+
+  if (statut === 'en_retard') {
+    const client = await clientsModel.trouverParId(facture.client_id);
+    if (client) {
+      notifications.notifier(
+        client.utilisateur_id,
+        'facture_en_retard',
+        `Votre facture ${facture.reference} est maintenant en retard`,
+        { facture_id: facture.id, reference: facture.reference }
+      );
+    }
+  }
+  return factureMaj;
 }
+
 async function supprimerFacture(id) {
   const facture = await facturesModel.trouverParId(id);
   if (!facture) throw ApiError.introuvable('Facture introuvable');

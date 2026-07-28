@@ -8,23 +8,35 @@ const ApiError = require('../utils/ApiError');
 const escapeHtml = require('../utils/escapeHtml');
 const messagesModel = require('../models/messages.model');
 const ticketsService = require('./tickets.service');
+const notifications = require('../socket/notifications');
+
 
 async function envoyerMessage({ ticketId, utilisateur, contenu, type = 'texte' }) {
   // Vérifie l'accès au ticket avant tout — lève 403/404 sinon,
   // exactement la même règle que pour consulter le ticket lui-même.
-  await ticketsService.obtenirTicketPourUtilisateur(ticketId, utilisateur);
-
+  const ticket = await ticketsService.obtenirTicketPourUtilisateur(ticketId, utilisateur);
   const contenuAssaini = escapeHtml(contenu);
-
-  const message = await messagesModel.creer({
+  const messageBrut = await messagesModel.creer({
     ticket_id: ticketId,
     expediteur_id: utilisateur.id,
     type,
     contenu: contenuAssaini,
   });
 
-  return messagesModel.trouverParId(message.id); // recharge avec infos expéditeur jointes
+  const message = await messagesModel.trouverParId(messageBrut.id); // recharge avec infos expéditeur jointes
+  // Notifie le DESTINATAIRE (pas l'émetteur) — si le client a écrit,
+  // on notifie l'agent assigné ; si l'agent/admin a écrit, on notifie
+  // le client. ticket.agent_id référence directement utilisateurs.id
+  // (pas besoin de jointure) ; ticket.client_utilisateur_id vient de
+  // la jointure clients→utilisateurs (même piège qu'en Phase 19).
+  if (utilisateur.role === 'client' && ticket.agent_id) {
+    notifications.notifier(ticket.agent_id, 'ticket_repondu', `Nouveau message sur le ticket #${ticketId}`, { ticket_id: ticketId, message_id: message.id });
+  } else if (utilisateur.role !== 'client') {
+    notifications.notifier(ticket.client_utilisateur_id, 'ticket_repondu', `Réponse de l'agent sur votre ticket #${ticketId}`, { ticket_id: ticketId, message_id: message.id });
+  }
+  return message;
 }
+
 
 async function marquerMessageLu({ messageId, utilisateur }) {
   const message = await messagesModel.trouverParId(messageId);

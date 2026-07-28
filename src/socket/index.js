@@ -11,6 +11,7 @@ const env = require('../config/env');
 const logger = require('../config/logger');
 const enregistrerEvenementsSupport = require('./support');
 const enregistrerEvenementsAppels = require('./appels');
+const notifications = require('./notifications');
 
 function initialiserSocket(serveurHttp) {
   const io = new Server(serveurHttp, {
@@ -19,6 +20,11 @@ function initialiserSocket(serveurHttp) {
       credentials: true,
     },
   });
+
+  // Injection unique : tous les services (factures, messages...)
+  // peuvent désormais appeler notifications.notifier(...) sans
+  // dépendre directement de cet objet io.
+  notifications.initialiser(io);
 
   // --- Middleware d'authentification (exécuté une fois par connexion) ---
   io.use((socket, next) => {
