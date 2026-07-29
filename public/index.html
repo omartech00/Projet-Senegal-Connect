@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sénégal Connect — Support client</title>
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <main class="conteneur">
+    <h1>Sénégal Connect — Support client</h1>
+
+    <!-- Connexion (sera déplacé dans un panneau dédié en phase d'assemblage final) -->
+    <section id="section-connexion">
+      <h2>Connexion</h2>
+      <input id="champ-email" type="email" placeholder="Email" />
+      <input id="champ-mot-de-passe" type="password" placeholder="Mot de passe" />
+      <button id="bouton-connexion">Se connecter</button>
+      <p id="statut-connexion"></p>
+    </section>
+
+    <!-- Appel audio/vidéo — objet de cette Phase 26 -->
+    <section id="section-appel" hidden>
+      <h2>Appel audio/vidéo</h2>
+      <label>Ticket : <input id="champ-ticket-id" type="number" value="1" /></label>
+      <label>Type :
+        <select id="champ-type-appel">
+          <option value="audio">Audio</option>
+          <option value="video" selected>Vidéo</option>
+        </select>
+      </label>
+      <button id="bouton-appeler">Appeler</button>
+      <button id="bouton-raccrocher" disabled>Raccrocher</button>
+      <button id="bouton-micro" disabled>🎤 Couper micro</button>
+      <button id="bouton-camera" disabled>📷 Couper caméra</button>
+
+      <div class="conteneur-videos">
+        <video id="video-distante" autoplay playsinline></video>
+        <video id="video-locale" autoplay playsinline muted></video>
+      </div>
+
+      <p id="statut-appel"></p>
+    </section>
+  </main>
+
+    <!-- Chargement local autonome sans CDN (Phase 25) -->
+  <script src="vendor/socket.io.min.js"></script>
+  <script src="vendor/peerjs.min.js"></script>
+  <script src="js/webrtc.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -64,7 +64,18 @@ function gestion404(req, res) {
 function gestionnaireErreurs(err, req, res, next) { // eslint-disable-line no-unused-vars
   let erreur = err;
 
+  // Erreur Multer (ex: fichier trop volumineux) — pas de statusCode
+  // natif, converti en 400 explicite (ajouté en Phase 22).
+  if (!err.statusCode && err.name === 'MulterError') {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      erreur = ApiError.badRequest('Fichier trop volumineux (10 Mo maximum)');
+    } else {
+      erreur = ApiError.badRequest(`Erreur d'upload : ${err.message}`);
+    }
+  }
+
   // Si l'erreur vient directement de PostgreSQL (code à 5 chiffres,
+
   // pas encore transformée en ApiError par un service) et qu'aucun
   // ApiError explicite n'a déjà fixé de statusCode, on la convertit ici.
   if (!err.statusCode && err.code) {

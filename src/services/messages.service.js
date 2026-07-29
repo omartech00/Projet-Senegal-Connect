@@ -6,6 +6,7 @@
 
 const ApiError = require('../utils/ApiError');
 const escapeHtml = require('../utils/escapeHtml');
+const { typeMessageDepuisMime } = require('../utils/typeFichier');
 const messagesModel = require('../models/messages.model');
 const ticketsService = require('./tickets.service');
 const notifications = require('../socket/notifications');
@@ -58,4 +59,34 @@ async function obtenirHistorique(ticketId, utilisateur, { avant, limite } = {}) 
   return messagesModel.listerHistorique(ticketId, { avant, limite: limiteNum });
 }
 
-module.exports = { envoyerMessage, marquerMessageLu, obtenirHistorique };
+/**
+ * Insertion d'un message de type fichier — appelée UNIQUEMENT depuis
+ * le handler socket "fichier:partager" (Phase 22), après que l'upload
+ * REST a déjà stocké le fichier et renvoyé son URL. Réutilise la même
+ * logique d'autorisation et de notification qu'un message texte.
+ */
+async function partagerFichier({ ticketId, utilisateur, fichierUrl, fichierNom, fichierTaille, mimeType }) {
+  const ticket = await ticketsService.obtenirTicketPourUtilisateur(ticketId, utilisateur);
+
+  const messageBrut = await messagesModel.creer({
+    ticket_id: ticketId,
+    expediteur_id: utilisateur.id,
+    type: typeMessageDepuisMime(mimeType),
+    contenu: null,
+    fichier_url: fichierUrl,
+    fichier_nom: fichierNom,
+    fichier_taille: fichierTaille,
+  });
+
+  const message = await messagesModel.trouverParId(messageBrut.id);
+
+  if (utilisateur.role === 'client' && ticket.agent_id) {
+    notifications.notifier(ticket.agent_id, 'ticket_repondu', `Fichier partagé sur le ticket #${ticketId}`, { ticket_id: ticketId, message_id: message.id });
+  } else if (utilisateur.role !== 'client') {
+    notifications.notifier(ticket.client_utilisateur_id, 'ticket_repondu', `Fichier partagé par l'agent sur votre ticket #${ticketId}`, { ticket_id: ticketId, message_id: message.id });
+  }
+
+  return message;
+}
+
+module.exports = { envoyerMessage, marquerMessageLu, obtenirHistorique, partagerFichier };

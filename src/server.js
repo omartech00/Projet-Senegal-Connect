@@ -1,11 +1,5 @@
-// src/server.js
-// Rôle : point d'entrée réel du process. Démarre l'écoute HTTP et
-// vérifie la connectivité PostgreSQL au démarrage. Socket.IO et le
-// serveur PeerJS seront attachés ici aux Phases 19 et 25 (ils ont
-// besoin du même objet `http.Server` que Express, d'où l'usage de
-// `http.createServer(app)` plutôt que `app.listen()` directement).
-
 const http = require('http');
+const { PeerServer } = require('peer'); // <--- Utilisez PeerServer (standalone) au lieu de ExpressPeerServer
 const app = require('./app');
 const env = require('./config/env');
 const logger = require('./config/logger');
@@ -15,7 +9,6 @@ const initialiserSocket = require('./socket');
 const serveurHttp = http.createServer(app);
 const io = initialiserSocket(serveurHttp);
 
-
 async function demarrer() {
   const bddOk = await verifierConnexion();
   if (!bddOk) {
@@ -23,9 +16,27 @@ async function demarrer() {
     process.exit(1);
   }
 
-  serveurHttp.listen(env.port, () => {
-    logger.info(`[server] Sénégal Connect démarré sur le port ${env.port} (env: ${env.nodeEnv})`);
+  // 1. Démarrage d'Express et de Socket.IO sur le port 3000 uniquement
+  serveurHttp.listen(env.port || 3000, () => {
+    logger.info(`[server] Sénégal Connect démarré sur le port ${env.port || 3000}`);
     logger.info('[server] Socket.IO prêt à accepter des connexions authentifiées');
+  });
+
+  // 2. Démarrage du serveur de signalisation WebRTC sur le port ISOLÉ 3001
+  // En utilisant PeerServer directement, aucun conflit de port ou d'upgrade n'est possible avec le port 3000.
+  const peerServer = PeerServer({ 
+    port: 3001, 
+    path: '/peerjs' 
+  }, () => {
+    logger.info('[server] Serveur PeerJS de signalisation isolé actif sur le port 3001');
+  });
+
+  peerServer.on('connection', (client) => {
+    logger.info(`[peerjs] Peer connecté : ${client.getId()}`);
+  });
+
+  peerServer.on('disconnect', (client) => {
+    logger.info(`[peerjs] Peer déconnecté : ${client.getId()}`);
   });
 }
 

@@ -15,6 +15,7 @@ const notifications = require('./notifications');
 
 function initialiserSocket(serveurHttp) {
   const io = new Server(serveurHttp, {
+    path: '/socket.io',
     cors: {
       origin: env.corsOrigins,
       credentials: true,

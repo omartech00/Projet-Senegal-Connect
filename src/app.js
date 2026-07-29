@@ -4,6 +4,7 @@
 // l'écoute réseau, pour que Supertest (Phase 32) puisse l'importer
 // directement sans ouvrir de port.
 const logger = require('./config/logger');
+const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -24,13 +25,34 @@ const routeStats = require('./routes/stats');
 const app = express();
 
 // --- Sécurité de base (avant tout le reste) ---
-app.use(helmet());
+// CSP par défaut de helmet() = "default-src 'self'", ce qui bloque le
+// chargement des scripts Socket.IO/PeerJS servis depuis un CDN (Phase
+// 26), ainsi que les connexions WebSocket qu'ils ouvrent ensuite. On
+// autorise explicitement ces sources plutôt que de désactiver la CSP.
+// --- Sécurité de base (avant tout le reste) ---
+// --- Sécurité de base (avant tout le reste) ---
 app.use(
-  cors({
-    origin: env.corsOrigins,
-    credentials: true,
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        'script-src': ["'self'"], // Plus besoin de CDN externes !
+        'connect-src': [
+          "'self'", 
+          'ws://localhost:3000', 
+          'wss://localhost:3000', 
+          'http://localhost:3000', 
+          'ws://localhost:3001', 
+          'wss://localhost:3001',
+          'http://localhost:3001'
+        ],
+        'media-src': ["'self'", 'blob:'], // Requis pour afficher les flux caméra
+      },
+    },
   })
 );
+
+
 // --- Parsing du corps des requêtes ---
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
@@ -52,6 +74,16 @@ app.use('/api/factures', routeFactures);
 app.use('/api/tickets', routeTickets);
 app.use('/api/stats', routeStats);
 
+// --- Fichiers statiques de l'interface utilisateur ---
+// Distribue le dossier public contenant index.html, le CSS et le JS client
+app.use(express.static(path.join(__dirname, '../public')));
+
+// --- Fichiers uploadés (chat) ---
+// Sert les fichiers partagés en chat. Les noms UUID (middleware/
+// upload.js) empêchent de deviner l'URL d'un fichier d'un autre ticket.
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+
 // --- Documentation Swagger/OpenAPI ---
 // helmet() reste actif partout ailleurs ; on désactive seulement la CSP
 // sur cette route précise, car Swagger UI a besoin de scripts inline
@@ -70,6 +102,15 @@ app.get('/api/docs.json', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(specificationSwagger);
 });
+
+//------------peerjs-------
+app.use('/peerjs', (req, res, next) => {
+  if (app.locals.peerServer) {
+    return app.locals.peerServer.handle(req, res, next);
+  }
+  return next();
+});
+//------------peerjs- FIN------
 
 // --- Route inconnue (404) ---
 // Doit être monté après TOUTES les routes déclarées ci-dessus, sinon

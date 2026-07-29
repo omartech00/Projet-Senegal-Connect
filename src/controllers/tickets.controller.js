@@ -4,8 +4,10 @@
 
 const { validationResult } = require('express-validator');
 const ApiError = require('../utils/ApiError');
+const { typeMessageDepuisMime } = require('../utils/typeFichier');
 const ticketsService = require('../services/tickets.service');
 const messagesService = require('../services/messages.service');
+const appelsService = require('../services/appels.service');
 
 
 function formaterErreursValidation(req) {
@@ -57,4 +59,37 @@ async function historiqueMessages(req, res) {
   res.status(200).json({ data: messages });
 }
 
-module.exports = { lister, detail, creer, changerStatut, historiqueMessages };
+// Middleware (pas un controller classique) : vérifie l'accès au
+// ticket AVANT que Multer ne traite le fichier. Appelle next() en
+// cas de succès, laisse l'erreur remonter au middleware global sinon.
+async function autoriserAccesTicket(req, res, next) {
+  await ticketsService.obtenirTicketPourUtilisateur(req.params.id, req.user);
+  next();
+}
+
+// Ne crée AUCUN message en base — reçoit juste le fichier, le stocke
+// (déjà fait par Multer à ce stade), renvoie son URL. C'est le client
+// qui, avec cette URL, émettra l'événement socket "fichier:partager"
+// pour déclencher la création réelle du message (cf. section 2 de
+// la Phase 22, décision actée depuis le cahier des charges).
+async function uploaderFichier(req, res) {
+  if (!req.file) {
+    throw ApiError.badRequest('Aucun fichier reçu (champ attendu : "fichier")');
+  }
+
+  res.status(201).json({
+    fichier_url: `/uploads/${req.file.filename}`,
+    fichier_nom: req.file.originalname,
+    fichier_taille: req.file.size,
+    mime_type: req.file.mimetype,
+    type_message: typeMessageDepuisMime(req.file.mimetype),
+  });
+}
+
+async function historiqueAppels(req, res) {
+  const appels = await appelsService.listerHistoriqueTicket(req.params.id, req.user);
+  res.status(200).json({ data: appels });
+}
+
+module.exports = { lister, detail, creer, changerStatut, historiqueMessages, 
+                    autoriserAccesTicket, uploaderFichier, historiqueAppels };
