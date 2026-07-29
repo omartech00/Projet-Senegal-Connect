@@ -200,4 +200,20 @@ router.post(
   asyncHandler(ticketsController.uploaderFichier)
 );
 
+/**
+ * @openapi
+ * /api/tickets/{id}/appels:
+ *   get:
+ *     summary: Historique des appels d'un ticket
+ *     tags: [Tickets]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: Liste des appels (audio/vidéo) du ticket }
+ */
+router.get('/:id/appels', verifierJWT, validationId, asyncHandler(ticketsController.historiqueAppels));
+
 module.exports = router;

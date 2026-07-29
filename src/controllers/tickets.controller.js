@@ -7,6 +7,7 @@ const ApiError = require('../utils/ApiError');
 const { typeMessageDepuisMime } = require('../utils/typeFichier');
 const ticketsService = require('../services/tickets.service');
 const messagesService = require('../services/messages.service');
+const appelsService = require('../services/appels.service');
 
 
 function formaterErreursValidation(req) {
@@ -85,6 +86,10 @@ async function uploaderFichier(req, res) {
   });
 }
 
+async function historiqueAppels(req, res) {
+  const appels = await appelsService.listerHistoriqueTicket(req.params.id, req.user);
+  res.status(200).json({ data: appels });
+}
 
 module.exports = { lister, detail, creer, changerStatut, historiqueMessages, 
-                autoriserAccesTicket, uploaderFichier };
+                    autoriserAccesTicket, uploaderFichier, historiqueAppels };
