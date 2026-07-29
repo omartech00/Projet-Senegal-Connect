@@ -1,0 +1,38 @@
+body {
+  font-family: system-ui, sans-serif;
+  background: #0d1117;
+  color: #e6edf3;
+  margin: 0;
+  padding: 2rem;
+}
+.conteneur { max-width: 700px; margin: 0 auto; }
+input, select, button {
+  padding: 0.5rem;
+  margin: 0.25rem 0;
+  border-radius: 6px;
+  border: 1px solid #30363d;
+  background: #161b22;
+  color: #e6edf3;
+}
+button { cursor: pointer; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+.conteneur-videos {
+  display: flex;
+  position: relative;
+  margin-top: 1rem;
+}
+#video-distante {
+  width: 100%;
+  max-width: 640px;
+  background: #000;
+  border-radius: 8px;
+}
+#video-locale {
+  width: 140px;
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  border: 2px solid #e6edf3;
+  border-radius: 6px;
+  background: #000;
+}
