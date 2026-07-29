@@ -78,6 +78,15 @@ app.get('/api/docs.json', (req, res) => {
   res.send(specificationSwagger);
 });
 
+//------------peerjs-------
+app.use('/peerjs', (req, res, next) => {
+  if (app.locals.peerServer) {
+    return app.locals.peerServer.handle(req, res, next);
+  }
+  return next();
+});
+//------------peerjs- FIN------
+
 // --- Route inconnue (404) ---
 // Doit être monté après TOUTES les routes déclarées ci-dessus, sinon
 // il intercepterait des requêtes valides avant leur vraie route.
