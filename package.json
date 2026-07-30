@@ -9,11 +9,23 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "NODE_ENV=test jest --runInBand",
-    "test:cov": "NODE_ENV=test jest --coverage --runInBand",
+    "test": "jest --runInBand",
+    "test:cov": "jest --coverage --runInBand",
     "lint": "eslint src/"
   },
   "license": "UNLICENSED",
+  "jest": {
+    "testEnvironment": "node",
+    "setupFiles": [
+      "<rootDir>/tests/setup.js"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.js"
+    ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/"
+    ]
+  },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
@@ -28,7 +40,7 @@
     "socket.io": "^4.8.3",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
-    "uuid": "^14.0.1",
+    "uuid": "^9.0.1",
     "winston": "^3.19.0"
   },
   "devDependencies": {
@@ -43,6 +55,7 @@
   "overrides": {
     "brace-expansion": "5.0.8",
     "minimatch": "^10.0.0",
-    "glob": "^11.0.0"
+    "glob": "^11.0.0",
+    "test-exclude": "^7.0.1" 
   }
 }
