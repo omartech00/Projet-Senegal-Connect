@@ -45,37 +45,53 @@ $('bouton-connexion').addEventListener('click', async () => {
 });
 
 function connecterSocket(token) {
-  // 1. Initialisation de l'instance locale ou distante (Spécifiez l'URL pour éviter les approximations du navigateur)
-  socket = io('http://localhost:3000', { 
-    auth: { token },
-    transports: ['websocket'] // Force le mode WebSocket direct
-  });
-
-  // 2. Pose des écouteurs uniquement si l'instance est valide
-  if (!socket) {
-    console.error("[socket] Impossible d'initialiser l'instance de communication.");
-    return;
-  }
+  // Optionnel : spécifiez l'URL de votre serveur
+  socket = io('http://localhost:3000', { auth: { token } });
 
   socket.on('connect', () => {
     $('statut-connexion').textContent = `Connecté : ${utilisateurCourant.nom} (${utilisateurCourant.role}) — Socket.IO connecté`;
   });
 
+  // NETTOYAGE CRITIQUE : Supprime les écouteurs doublons si le script a été rechargé
+  socket.off('appel:entrant');
+  socket.off('appel:accepte');
+  socket.off('appel:refuse');
+  socket.off('appel:termine');
+
   // --- Réception d'un appel entrant ---
   socket.on('appel:entrant', async ({ appelId, initiateur, peerId_init, type }) => {
-    const accepte = confirm(`Appel ${type} entrant de ${initiateur.nom}. Accepter ?`);
     appelIdActuel = appelId;
+
+    try {
+      await SenegalConnectWebRTC.demarrerFluxLocal({ audio: true, video: type === 'video' });
+    } catch (err) {
+      console.warn("[Matériel] Webcam occupée, passage en mode Audio...");
+      try {
+        await SenegalConnectWebRTC.demarrerFluxLocal({ audio: true, video: false });
+      } catch (errAudio) {
+        console.error("[Critique] Périphériques inaccessibles", errAudio);
+        socket.emit('appel:refuser', { appelId });
+        return;
+      }
+    }
+
+    const accepte = confirm(`Appel ${type} entrant de ${initiateur.nom}. Accepter ?`);
 
     if (!accepte) {
       socket.emit('appel:refuser', { appelId });
+      SenegalConnectWebRTC.raccrocher();
       return;
     }
 
-    await SenegalConnectWebRTC.demarrerFluxLocal({ audio: true, video: type === 'video' });
     activerControlesAppel();
+    SenegalConnectWebRTC.repondreAppelActuel();
 
     socket.emit('appel:accepter', { appelId, peerId: peerIdLocal }, (rep) => {
-      if (!rep.succes) $('statut-appel').textContent = `Erreur : ${rep.message}`;
+      if (!rep.succes) {
+        console.error("[Serveur Error] Rejet de l'acceptation :", rep.message);
+        desactiverControlesAppel();
+        SenegalConnectWebRTC.raccrocher();
+      }
     });
   });
 
@@ -135,17 +151,55 @@ $('bouton-camera').addEventListener('click', () => {
   if (appelIdActuel) socket.emit('appel:controle', { appelId: appelIdActuel, video: actif });
 });
 
+$('bouton-partage-ecran').addEventListener('click', async () => {
+  try {
+    if (SenegalConnectWebRTC.partageEcranEstActif()) {
+      await SenegalConnectWebRTC.arreterPartageEcran();
+      $('bouton-partage-ecran').textContent = "🖥️ Partager l'écran";
+    } else {
+      await SenegalConnectWebRTC.demarrerPartageEcran();
+      $('bouton-partage-ecran').textContent = '🖥️ Arrêter le partage';
+    }
+    // Indique à l'autre participant que le partage est actif —
+    // affichage d'un indicateur visuel côté distant (exigence PDF,
+    // point 3 du module M4 : "Indiquer à l'abonné que le partage
+    // d'écran est actif").
+    if (appelIdActuel) {
+      socket.emit('appel:controle', { appelId: appelIdActuel, partageEcran: SenegalConnectWebRTC.partageEcranEstActif() });
+    }
+  } catch (erreur) {
+    $('statut-appel').textContent = `Erreur partage d'écran : ${erreur.message}`;
+  }
+});
+
+// Écoute des indicateurs distants (micro/caméra/partage) envoyés par
+// l'autre participant via appel:controle (Phase 25) — affichage
+// simple dans la zone de statut pour cette phase ; l'assemblage
+// visuel final (icônes superposées sur la vidéo) viendra dans la
+// phase d'intégration complète de l'interface.
+function ecouterIndicateursDistants() {
+  socket.on('appel:controle', ({ micro, video, partageEcran }) => {
+    const morceaux = [];
+    if (micro === false) morceaux.push('🔇 Micro coupé (distant)');
+    if (video === false) morceaux.push('📷 OFF (distant)');
+    if (partageEcran === true) morceaux.push("🖥️ Partage d'écran actif (distant)");
+    if (morceaux.length) $('statut-appel').textContent = morceaux.join(' — ');
+  });
+}
 function activerControlesAppel() {
   $('bouton-raccrocher').disabled = false;
   $('bouton-micro').disabled = false;
   $('bouton-camera').disabled = false;
+  $('bouton-partage-ecran').disabled = false;
   $('bouton-appeler').disabled = true;
 }
-
 function desactiverControlesAppel() {
   $('bouton-raccrocher').disabled = true;
   $('bouton-micro').disabled = true;
   $('bouton-camera').disabled = true;
+  $('bouton-partage-ecran').disabled = true;
   $('bouton-appeler').disabled = false;
+  $('bouton-partage-ecran').textContent = "🖥️ Partager l'écran";
   appelIdActuel = null;
 }
+

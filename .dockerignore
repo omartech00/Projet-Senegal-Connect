@@ -1,0 +1,17 @@
+node_modules
+.git
+.gitignore
+.env
+.env.example
+npm-debug.log
+logs/*
+!logs/.gitkeep
+uploads/*
+!uploads/.gitkeep
+coverage
+tests
+docs
+*.md
+.nvmrc
+.eslintrc.json
+nodemon.json
