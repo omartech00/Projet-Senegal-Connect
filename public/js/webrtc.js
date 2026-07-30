@@ -11,8 +11,11 @@
   let peer = null;
   let connexionMedia = null; // MediaConnection PeerJS active
   let streamLocal = null;
+  let pisteCameraOriginale = null; // conservée pour restauration après partage d'écran
+  let streamEcran = null;
 
-  const etat = { microActif: true, cameraActive: true };
+  const etat = { microActif: true, cameraActive: true, partageEcranActif: false };
+
 
   /**
    * Initialise l'objet Peer côté client avec un identifiant précis
@@ -77,17 +80,37 @@
   }
 
   /**
-   * Côté DESTINATAIRE : enregistré UNE SEULE FOIS (piège section 5),
-   * répond automatiquement à tout appel PeerJS entrant avec le flux
-   * local déjà ouvert via demarrerFluxLocal (appelé avant, dans
-   * app.js, au moment de "appel:entrant").
+   * Côté DESTINATAIRE : Écoute l'appel WebRTC entrant, conserve sa référence,
+   * mais NE RÉPOND PAS tant que le flux de la caméra locale n'est pas prêt.
    */
   function ecouterAppelsEntrants() {
+    if (!peer) return;
+    
+    // Nettoie l'ancien écouteur s'il existe pour éviter le déclenchement en double
+    peer.off('call');
+    
     peer.on('call', (appelEntrant) => {
-      appelEntrant.answer(streamLocal);
-      appelEntrant.on('stream', afficherFluxDistant);
+      console.log("[webrtc] Signal WebRTC reçu, mise en attente de la validation de l'utilisateur...");
       connexionMedia = appelEntrant;
     });
+  }
+
+  /**
+   * NOUVELLE FONCTION : Applique la réponse WebRTC avec le flux local enfin prêt.
+   * Appelée par app.js après le confirm() et le demarrerFluxLocal().
+   */
+  function repondreAppelActuel() {
+    if (!connexionMedia) {
+      console.error("[webrtc] Impossible de répondre : aucune instance d'appel en attente.");
+      return;
+    }
+    if (!streamLocal) {
+      console.error("[webrtc] Impossible de répondre : le flux de la caméra n'est pas prêt.");
+      return;
+    }
+    console.log("[webrtc] Envoi du flux local au participant distant.");
+    connexionMedia.answer(streamLocal); // Réponse propre avec le flux valide
+    connexionMedia.on('stream', afficherFluxDistant);
   }
 
   /** Coupe/rétablit le micro via track.enabled — jamais stop(). */
@@ -106,23 +129,103 @@
     return etat.cameraActive;
   }
 
+  /**
+   * Démarre le partage d'écran et REMPLACE la piste vidéo de la
+   * connexion WebRTC déjà établie via replaceTrack() — la connexion
+   * n'est jamais fermée ni renégociée, l'autre participant ne voit
+   * aucune coupure. frameRate:15 (exigence PDF, contenu peu mobile).
+   */
+  async function demarrerPartageEcran() {
+    if (!connexionMedia || !connexionMedia.peerConnection) {
+      throw new Error("Aucune connexion d'appel active pour partager l'écran");
+    }
+
+    streamEcran = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: 15 },
+      audio: false, // jamais l'audio système, exigence PDF
+    });
+    const pisteEcran = streamEcran.getVideoTracks()[0];
+
+    // Conserve la piste caméra actuelle pour pouvoir la restaurer
+    // précisément à l'arrêt du partage (section 4 de cette phase).
+    pisteCameraOriginale = streamLocal.getVideoTracks()[0];
+
+    const expediteurVideo = connexionMedia.peerConnection
+      .getSenders()
+      .find((expediteur) => expediteur.track && expediteur.track.kind === 'video');
+
+    if (!expediteurVideo) {
+      throw new Error('Aucun expéditeur vidéo trouvé sur la connexion active');
+    }
+
+    await expediteurVideo.replaceTrack(pisteEcran);
+
+    // La miniature locale doit aussi refléter ce qui est réellement
+    // partagé, pas la caméra (section 4 de cette phase).
+    const videoLocale = document.getElementById('video-locale');
+    if (videoLocale) videoLocale.srcObject = streamEcran;
+
+    // Événement natif du navigateur : déclenché quand l'utilisateur
+    // clique "Arrêter le partage" dans la barre native — reprise
+    // AUTOMATIQUE de la caméra, sans action applicative supplémentaire.
+    pisteEcran.onended = () => arreterPartageEcran();
+
+    etat.partageEcranActif = true;
+    return true;
+  }
+
+  /**
+   * Reprend la caméra via un second replaceTrack() — symétrique de
+   * demarrerPartageEcran(). Appelée soit manuellement (bouton),
+   * soit automatiquement via track.onended ci-dessus.
+   */
+  async function arreterPartageEcran() {
+    if (!etat.partageEcranActif || !connexionMedia) return;
+    const expediteurVideo = connexionMedia.peerConnection
+      .getSenders()
+      .find((expediteur) => expediteur.track && expediteur.track.kind === 'video');
+    if (expediteurVideo && pisteCameraOriginale) {
+      await expediteurVideo.replaceTrack(pisteCameraOriginale);
+    }
+    if (streamEcran) {
+      streamEcran.getTracks().forEach((piste) => piste.stop());
+      streamEcran = null;
+    }
+    const videoLocale = document.getElementById('video-locale');
+    if (videoLocale) videoLocale.srcObject = streamLocal;
+
+    etat.partageEcranActif = false;
+  }
+
+  function partageEcranEstActif() {
+    return etat.partageEcranActif;
+  }
+
   /** Termine réellement l'appel — ICI on stop() les pistes (fin définitive). */
   function raccrocher() {
+    if (streamEcran) streamEcran.getTracks().forEach((piste) => piste.stop());
     if (connexionMedia) connexionMedia.close();
     if (streamLocal) streamLocal.getTracks().forEach((piste) => piste.stop());
     connexionMedia = null;
     streamLocal = null;
+    streamEcran = null;
+    pisteCameraOriginale = null;
     etat.microActif = true;
     etat.cameraActive = true;
+    etat.partageEcranActif = false;
   }
 
   window.SenegalConnectWebRTC = {
     initialiserPeer,
     demarrerFluxLocal,
     ecouterAppelsEntrants,
+    repondreAppelActuel,
     appeler,
     couperMicro,
     couperCamera,
+    demarrerPartageEcran,
+    arreterPartageEcran,
+    partageEcranEstActif,
     raccrocher,
   };
 })();
