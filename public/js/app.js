@@ -102,6 +102,7 @@ function connecterSocket() {
     $('panneau-appel').hidden = false;
     try {
       await SenegalConnectWebRTC.demarrerFluxLocal({ audio: true, video: type === 'video' });
+      SenegalConnectWebRTC.repondreAppelActuel();
       socket.emit('appel:accepter', { appelId, peerId: peerIdLocal }, (rep) => {
         if (!rep.succes) $('statut-appel').textContent = `Erreur : ${rep.message}`;
       });
