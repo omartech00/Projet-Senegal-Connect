@@ -33,14 +33,16 @@
         return reject(new Error("Constructeur PeerJS introuvable"));
       }
 
-      // CORRECTION : On assigne à la variable locale 'peer' et on passe l'ID requis
+      const host = window.location && window.location.hostname ? window.location.hostname : 'localhost';
+      const secure = window.location && window.location.protocol === 'https:';
+
       peer = new PeerConstructor(peerId, {
-        host: 'localhost',
+        host,
         port: 3001,
-        path: '/peerjs'
+        path: '/peerjs',
+        secure,
       });
 
-      // Reste du code inchangé et maintenant fonctionnel
       peer.on('open', (id) => resolve(id));
       peer.on('error', (erreur) => reject(erreur));
     });
@@ -85,13 +87,15 @@
    */
   function ecouterAppelsEntrants() {
     if (!peer) return;
-    
-    // Nettoie l'ancien écouteur s'il existe pour éviter le déclenchement en double
+
     peer.off('call');
-    
+
     peer.on('call', (appelEntrant) => {
       console.log("[webrtc] Signal WebRTC reçu, mise en attente de la validation de l'utilisateur...");
       connexionMedia = appelEntrant;
+      if (streamLocal) {
+        repondreAppelActuel();
+      }
     });
   }
 

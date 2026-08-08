@@ -38,7 +38,7 @@ app.use(
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
         'script-src': ["'self'"], // Plus besoin de CDN externes !
         'connect-src': [
-          "'self'", 
+          "'self'",
           'ws://localhost:3000', 
           'wss://localhost:3000', 
           'http://localhost:3000', 

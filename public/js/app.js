@@ -64,35 +64,14 @@ function connecterSocket(token) {
 
     try {
       await SenegalConnectWebRTC.demarrerFluxLocal({ audio: true, video: type === 'video' });
-    } catch (err) {
-      console.warn("[Matériel] Webcam occupée, passage en mode Audio...");
-      try {
-        await SenegalConnectWebRTC.demarrerFluxLocal({ audio: true, video: false });
-      } catch (errAudio) {
-        console.error("[Critique] Périphériques inaccessibles", errAudio);
-        socket.emit('appel:refuser', { appelId });
-        return;
-      }
+      socket.emit('appel:accepter', { appelId, peerId: peerIdLocal }, (rep) => {
+        if (!rep.succes) $('statut-appel').textContent = `Erreur : ${rep.message}`;
+      });
+    } catch (erreur) {
+      console.error('[app] Échec du démarrage du flux multimédia :', erreur);
+      $('statut-appel').textContent = `Erreur caméra/micro : ${erreur.message || 'Vérifiez que l’appareil est disponible et que les autorisations sont accordées.'}`;
+      $('panneau-appel').hidden = true;
     }
-
-    const accepte = confirm(`Appel ${type} entrant de ${initiateur.nom}. Accepter ?`);
-
-    if (!accepte) {
-      socket.emit('appel:refuser', { appelId });
-      SenegalConnectWebRTC.raccrocher();
-      return;
-    }
-
-    activerControlesAppel();
-    SenegalConnectWebRTC.repondreAppelActuel();
-
-    socket.emit('appel:accepter', { appelId, peerId: peerIdLocal }, (rep) => {
-      if (!rep.succes) {
-        console.error("[Serveur Error] Rejet de l'acceptation :", rep.message);
-        desactiverControlesAppel();
-        SenegalConnectWebRTC.raccrocher();
-      }
-    });
   });
 
   socket.on('appel:accepte', ({ peerId_dest }) => {
