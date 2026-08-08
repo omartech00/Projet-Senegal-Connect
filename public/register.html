@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inscription — Sénégal Connect</title>
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body class="fond-auth">
+  <div class="carte-auth">
+    <h1>Sénégal Connect</h1>
+    <p class="sous-titre">Créer un compte client</p>
+
+    <form id="formulaire-inscription">
+      <div class="ligne-double">
+        <label>Prénom<input id="champ-prenom" required /></label>
+        <label>Nom<input id="champ-nom" required /></label>
+      </div>
+      <label>Email
+        <input id="champ-email" type="email" required autocomplete="username" />
+      </label>
+      <label>Mot de passe (8 caractères min.)
+        <input id="champ-mot-de-passe" type="password" required minlength="8" autocomplete="new-password" />
+      </label>
+      <button type="submit" id="bouton-inscription">Créer mon compte</button>
+    </form>
+
+    <p id="message-erreur" class="message-erreur" hidden></p>
+    <p id="message-succes" class="message-succes" hidden></p>
+    <p class="lien-secondaire">Déjà un compte ? <a href="login.html">Se connecter</a></p>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/register.js"></script>
+</body>
+</html>

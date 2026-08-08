@@ -51,7 +51,7 @@
    * Démarre getUserMedia et affiche le flux dans la vidéo locale
    * (TOUJOURS muted — exigence PDF pour éviter le retour audio).
    */
-  async function demarrerFluxLocal({ audio, video }) {
+  /*async function demarrerFluxLocal({ audio, video }) {
     streamLocal = await navigator.mediaDevices.getUserMedia({ audio, video });
     const videoLocale = document.getElementById('video-locale');
     if (videoLocale) {
@@ -59,7 +59,33 @@
       videoLocale.muted = true;
     }
     return streamLocal;
+  }*/
+  async function demarrerFluxLocal({ audio, video }) {
+  if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+    throw new Error('Accès caméra/micro indisponible dans ce navigateur.');
   }
+
+  if (streamLocal) {
+    streamLocal.getTracks().forEach((piste) => piste.stop());
+    streamLocal = null;
+  }
+
+  try {
+    streamLocal = await navigator.mediaDevices.getUserMedia({ audio, video });
+  } catch (erreur) {
+    streamLocal = null;
+    console.warn('[webrtc] Impossible d’obtenir le flux multimédia :', erreur?.message || erreur);
+    throw erreur;
+  }
+
+  const videoLocale = document.getElementById('video-locale');
+  if (videoLocale) {
+    videoLocale.srcObject = streamLocal;
+    videoLocale.muted = true;
+  }
+
+  return streamLocal;
+}
 
   function afficherFluxDistant(stream) {
     const videoDistante = document.getElementById('video-distante');

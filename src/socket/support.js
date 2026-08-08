@@ -167,4 +167,18 @@ module.exports = function enregistrerEvenementsSupport(io, socket) {
     }
   });
 
+// --- ticket:rejoindre (C→S) — nécessaire à la robustesse multi-session ---
+  // Les rooms ne sont peuplées qu'au moment de ticket:ouvrir/assigner SUR
+  // LA CONNEXION DU MOMENT (Phase 19). Sans cet événement, un rechargement
+  // de page ferait perdre l'abonnement à message:nouveau pour ce ticket.
+  socket.on('ticket:rejoindre', async ({ ticketId }, callback) => {
+    try {
+      await ticketsService.obtenirTicketPourUtilisateur(ticketId, utilisateur);
+      socket.join(`ticket:${ticketId}`);
+      if (callback) callback({ succes: true });
+    } catch (erreur) {
+      if (callback) callback({ succes: false, message: erreur.message });
+    }
+  });
+
 };

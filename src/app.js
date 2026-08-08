@@ -44,7 +44,7 @@ app.use(
           'http://localhost:3000', 
           'ws://localhost:3001', 
           'wss://localhost:3001',
-          'http://localhost:3001'
+          'http://localhost:3001',
         ],
         'media-src': ["'self'", 'blob:'], // Requis pour afficher les flux caméra
       },
