@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: senegal_connect_db
+    environment:
+      POSTGRES_DB: senegal_connect
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: lahad
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docs/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d senegal_connect"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - senegal-net
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: senegal_connect_api
+    ports:
+      - "3000:3000"
+      - "9000:9000"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: senegal_connect
+      DB_USER: postgres
+      DB_PASS: lahad
+      JWT_SECRET: production-secret-change-me-at-least-64-characters-long-please-thank-you-ok
+      JWT_EXPIRES_IN: 24h
+      PORT: 3000
+      NODE_ENV: production
+      LOG_LEVEL: info
+      CORS_ORIGINS: http://localhost:3000
+      MAX_FILE_SIZE: 10485760
+      PEER_PORT: 9000
+    volumes:
+      - uploads:/app/uploads
+      - logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - senegal-net
+
+volumes:
+  pgdata:
+  uploads:
+  logs:
+
+networks:
+  senegal-net:
+    driver: bridge
