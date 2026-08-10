@@ -5,6 +5,7 @@
 
 SenegalConnectAPI.exigerAuthentification();
 const utilisateur = SenegalConnectAPI.obtenirUtilisateur();
+const roleUtilisateur = (utilisateur?.role || '').trim().toLowerCase();
 
 if (!utilisateur) {
   window.location.href = 'login.html';
@@ -35,10 +36,10 @@ function badgeHtml(statut, prefix = '') {
 // INITIALISATION
 // ============================================================
 if (utilisateur) {
-  document.getElementById('info-utilisateur').textContent = `${utilisateur.nom} (${utilisateur.role})`;
-  if (['agent', 'admin'].includes(utilisateur.role)) $('onglet-bouton-clients').hidden = false;
-  if (utilisateur.role === 'client') $('form-nouveau-ticket').hidden = false;
-  if (utilisateur.role === 'admin') {
+  document.getElementById('info-utilisateur').textContent = `${utilisateur.nom} (${roleUtilisateur})`;
+  if (['agent', 'admin'].includes(roleUtilisateur)) $('onglet-bouton-clients').hidden = false;
+  if (roleUtilisateur === 'client') $('form-nouveau-ticket').hidden = false;
+  if (roleUtilisateur === 'admin') {
     $('onglet-bouton-factures').hidden = false;
     $('onglet-bouton-stats').hidden = false;
   }
@@ -47,7 +48,7 @@ if (utilisateur) {
 }
 
 async function initialiser() {
-  peerIdLocal = `${utilisateur.role}-${utilisateur.id}-${Date.now()}`;
+  peerIdLocal = `${roleUtilisateur}-${utilisateur.id}-${Date.now()}`;
   try {
     await SenegalConnectWebRTC.initialiserPeer(peerIdLocal);
     SenegalConnectWebRTC.ecouterAppelsEntrants();
@@ -199,7 +200,7 @@ async function ouvrirTicket(ticketId) {
   badge.textContent = ticket.statut;
   badge.className = `badge-statut ${ticket.statut}`;
 
-  const estAgentOuAdmin = ['agent', 'admin'].includes(utilisateur.role);
+  const estAgentOuAdmin = ['agent', 'admin'].includes(roleUtilisateur);
   $('bouton-prendre-en-charge').hidden = !(estAgentOuAdmin && ticket.statut === 'ouvert');
   $('bouton-fermer-ticket').hidden = !(estAgentOuAdmin && ticket.statut !== 'ferme');
 
@@ -388,7 +389,7 @@ document.querySelectorAll('.vue-onglet').forEach((v) => {
 afficherOnglet('tickets');
 
 async function chargerClients() {
-  if (!['agent', 'admin'].includes(utilisateur.role)) return;
+  if (!['agent', 'admin'].includes(roleUtilisateur)) return;
   const { data } = await SenegalConnectAPI.appelApi('/api/clients');
   const liste = $('liste-clients');
   const select = $('facture-client-id');
@@ -436,7 +437,7 @@ async function chargerClients() {
 
 $('form-client').addEventListener('submit', async (event) => {
   event.preventDefault();
-  if (utilisateur.role !== 'admin') {
+  if (roleUtilisateur !== 'admin') {
     afficherToast('Seuls les admins peuvent créer des clients');
     return;
   }
@@ -567,7 +568,7 @@ $('bouton-annuler-forfait').addEventListener('click', () => {
 });
 
 async function chargerFactures() {
-  if (utilisateur.role !== 'admin') return;
+  if (roleUtilisateur !== 'admin') return;
   const statut = $('filtre-facture-statut').value;
   const periode = $('filtre-facture-periode').value;
   const query = new URLSearchParams();
@@ -607,7 +608,7 @@ async function chargerFactures() {
 
 $('form-facture').addEventListener('submit', async (event) => {
   event.preventDefault();
-  if (utilisateur.role !== 'admin') {
+  if (roleUtilisateur !== 'admin') {
     afficherToast('Accès réservé à l’admin');
     return;
   }
@@ -635,7 +636,7 @@ $('filtre-facture-statut').addEventListener('change', chargerFactures);
 $('filtre-facture-periode').addEventListener('change', chargerFactures);
 
 async function chargerStats() {
-  if (utilisateur.role !== 'admin') return;
+  if (roleUtilisateur !== 'admin') return;
   const { data } = await SenegalConnectAPI.appelApi('/api/stats');
   $('stat-clients-actifs').textContent = data.clients_actifs;
   $('stat-mrr').textContent = `${Number(data.mrr_fcfa).toLocaleString('fr-FR')} FCFA`;
