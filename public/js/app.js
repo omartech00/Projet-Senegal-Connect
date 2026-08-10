@@ -1,12 +1,14 @@
 // public/js/app.js
 // Rôle : logique complète de l'application — tickets, chat temps
-// réel (texte, fichiers, émojis, réactions, accusés, frappe),
-// appels audio/vidéo (via webrtc.js, inchangé depuis Phases 26-27).
-// Toute action à effet temps réel passe par Socket.IO ; REST ne
-// sert qu'au chargement initial des listes/historiques.
+// réel, appels audio/vidéo, et administration backend (clients, forfaits,
+// factures, stats, profil) exposée dans l'interface.
 
 SenegalConnectAPI.exigerAuthentification();
 const utilisateur = SenegalConnectAPI.obtenirUtilisateur();
+
+if (!utilisateur) {
+  window.location.href = 'login.html';
+}
 
 const EMOJIS = ['👍', '👎', '😂', '❤️', '😮', '😢', '😡', '🙏', '👏', '🔥', '✅', '🎉'];
 
@@ -16,17 +18,33 @@ let peerIdLocal = null;
 let appelIdActuel = null;
 let dernierEnvoiFrappe = 0;
 let minuteurMasquageFrappe = null;
+let forfaitEnEdition = null;
 
 const $ = (id) => document.getElementById(id);
+
+function formaterStatut(statut) {
+  return (statut || '').replace(/_/g, ' ');
+}
+
+function badgeHtml(statut, prefix = '') {
+  const libelle = formaterStatut(statut);
+  return `<span class="badge-statut ${statut}">${prefix}${libelle}</span>`;
+}
 
 // ============================================================
 // INITIALISATION
 // ============================================================
-document.getElementById('info-utilisateur').textContent = `${utilisateur.nom} (${utilisateur.role})`;
-if (['agent', 'admin'].includes(utilisateur.role)) $('onglet-bouton-clients').hidden = false;
-if (utilisateur.role === 'client') $('form-nouveau-ticket').hidden = false;
+if (utilisateur) {
+  document.getElementById('info-utilisateur').textContent = `${utilisateur.nom} (${utilisateur.role})`;
+  if (['agent', 'admin'].includes(utilisateur.role)) $('onglet-bouton-clients').hidden = false;
+  if (utilisateur.role === 'client') $('form-nouveau-ticket').hidden = false;
+  if (utilisateur.role === 'admin') {
+    $('onglet-bouton-factures').hidden = false;
+    $('onglet-bouton-stats').hidden = false;
+  }
 
-initialiser();
+  initialiser();
+}
 
 async function initialiser() {
   peerIdLocal = `${utilisateur.role}-${utilisateur.id}-${Date.now()}`;
@@ -39,6 +57,9 @@ async function initialiser() {
   connecterSocket();
   chargerTickets();
   chargerForfaits();
+  chargerClients();
+  chargerFactures();
+  chargerStats();
 }
 
 // ============================================================
@@ -47,8 +68,14 @@ async function initialiser() {
 function connecterSocket() {
   socket = io({ auth: { token: SenegalConnectAPI.obtenirToken() } });
 
-  socket.on('connect', () => $('etat-socket').classList.add('connecte'));
-  socket.on('disconnect', () => $('etat-socket').classList.remove('connecte'));
+  socket.on('connect', () => {
+    $('etat-socket').classList.add('connecte');
+    $('etat-socket').setAttribute('aria-label', 'Connexion en temps réel active');
+  });
+  socket.on('disconnect', () => {
+    $('etat-socket').classList.remove('connecte');
+    $('etat-socket').setAttribute('aria-label', 'Connexion en temps réel indisponible');
+  });
 
   socket.on('ticket:nouveau', (ticket) => {
     afficherToast(`Nouveau ticket : ${ticket.sujet}`);
@@ -93,7 +120,6 @@ function connecterSocket() {
 
   socket.on('notification:push', (notif) => afficherToast(notif.message));
 
-  // --- Appels (identique Phases 26-27, inchangé) ---
   socket.on('appel:entrant', async ({ appelId, initiateur, peerId_init, type }) => {
     appelIdActuel = appelId;
     const accepte = confirm(`Appel ${type} entrant de ${initiateur.nom}. Accepter ?`);
@@ -180,7 +206,7 @@ async function ouvrirTicket(ticketId) {
   $('liste-messages').innerHTML = '';
   const { data: messages } = await SenegalConnectAPI.appelApi(`/api/tickets/${ticketId}/messages`);
   messages.forEach(afficherMessage);
-  chargerTickets(); // rafraîchit le surlignage "ticket actif"
+  chargerTickets();
 }
 
 $('bouton-prendre-en-charge').addEventListener('click', () => {
@@ -299,7 +325,6 @@ function envoyerMessageTexte() {
 $('bouton-envoyer-message').addEventListener('click', envoyerMessageTexte);
 $('champ-message').addEventListener('keydown', (e) => { if (e.key === 'Enter') envoyerMessageTexte(); });
 
-// Frappe — throttlée à 1/s CÔTÉ CLIENT (le serveur relaie sans throttle, Phase 20)
 $('champ-message').addEventListener('input', () => {
   if (!ticketActifId) return;
   const maintenant = Date.now();
@@ -309,7 +334,6 @@ $('champ-message').addEventListener('input', () => {
   }
 });
 
-// Partage de fichiers — upload REST puis diffusion via fichier:partager (Phase 22)
 $('bouton-joindre-fichier').addEventListener('click', () => $('champ-fichier').click());
 $('champ-fichier').addEventListener('change', async (e) => {
   const fichier = e.target.files[0];
@@ -330,41 +354,313 @@ $('champ-fichier').addEventListener('change', async (e) => {
 });
 
 // ============================================================
-// CLIENTS / FORFAITS (listes en lecture, REST classique)
+// CLIENTS / FORFAITS / FACTURES / STATS
 // ============================================================
 $('onglet-bouton-clients')?.addEventListener('click', chargerClients);
-document.querySelectorAll('.onglet-nav').forEach((bouton) => {
-  bouton.addEventListener('click', () => {
-    document.querySelectorAll('.onglet-nav').forEach((b) => b.classList.remove('onglet-actif'));
-    document.querySelectorAll('.vue-onglet').forEach((v) => { v.hidden = true; });
-    bouton.classList.add('onglet-actif');
-    $(`vue-${bouton.dataset.onglet}`).hidden = false;
+function afficherOnglet(nom) {
+  document.querySelectorAll('.onglet-nav').forEach((b) => {
+    const actif = b.dataset.onglet === nom;
+    b.classList.toggle('onglet-actif', actif);
+    b.setAttribute('aria-selected', String(actif));
   });
-});
 
-async function chargerClients() {
-  const { data } = await SenegalConnectAPI.appelApi('/api/clients');
-  const liste = $('liste-clients');
-  liste.innerHTML = '';
-  data.forEach((client) => {
-    const item = document.createElement('li');
-    item.innerHTML = `<div class="sujet">${echapper(client.nom)} ${echapper(client.prenom)}</div><div class="meta">${client.msisdn} — ${client.statut}</div>`;
-    liste.appendChild(item);
+  document.querySelectorAll('.vue-onglet').forEach((v) => {
+    const visible = v.id === `vue-${nom}`;
+    v.hidden = !visible;
+    v.classList.toggle('visible', visible);
+    if (visible) {
+      v.style.display = 'flex';
+    } else {
+      v.style.display = 'none';
+    }
   });
 }
+
+document.querySelectorAll('.onglet-nav').forEach((bouton) => {
+  bouton.addEventListener('click', () => afficherOnglet(bouton.dataset.onglet));
+});
+
+document.querySelectorAll('.vue-onglet').forEach((v) => {
+  v.hidden = true;
+  v.classList.remove('visible');
+  v.style.display = 'none';
+});
+afficherOnglet('tickets');
+
+async function chargerClients() {
+  if (!['agent', 'admin'].includes(utilisateur.role)) return;
+  const { data } = await SenegalConnectAPI.appelApi('/api/clients');
+  const liste = $('liste-clients');
+  const select = $('facture-client-id');
+  liste.innerHTML = '';
+  select.innerHTML = '<option value="">Sélectionner un client</option>';
+
+  data.forEach((client) => {
+    const item = document.createElement('li');
+    item.className = 'item-gestion';
+    item.innerHTML = `
+      <div class="contenu">
+        <div class="sujet">${echapper(client.nom)} ${echapper(client.prenom)}</div>
+        <div class="meta">${echapper(client.msisdn)} — ${badgeHtml(client.statut)}</div>
+      </div>
+      <div class="boutons">
+        <button type="button" class="secondaire" data-client-action="statut" data-client-id="${client.id}">Statut</button>
+        <button type="button" class="danger" data-client-action="supprimer" data-client-id="${client.id}">Suppr.</button>
+      </div>
+    `;
+
+    item.querySelector('[data-client-action="statut"]').addEventListener('click', async () => {
+      const nouveauStatut = client.statut === 'actif' ? 'suspendu' : 'actif';
+      await SenegalConnectAPI.appelApi(`/api/clients/${client.id}/statut`, {
+        method: 'PATCH',
+        body: JSON.stringify({ statut: nouveauStatut }),
+      });
+      afficherToast(`Statut mis à jour : ${nouveauStatut}`);
+      chargerClients();
+    });
+
+    item.querySelector('[data-client-action="supprimer"]').addEventListener('click', async () => {
+      if (!await demanderConfirmation('Supprimer ce client ?', `${client.nom} ${client.prenom} sera supprimé définitivement.`)) return;
+      await SenegalConnectAPI.appelApi(`/api/clients/${client.id}`, { method: 'DELETE' });
+      afficherToast('Client supprimé');
+      chargerClients();
+    });
+
+    liste.appendChild(item);
+    const option = document.createElement('option');
+    option.value = client.id;
+    option.textContent = `${client.nom} ${client.prenom} — ${client.msisdn}`;
+    select.appendChild(option);
+  });
+}
+
+$('form-client').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (utilisateur.role !== 'admin') {
+    afficherToast('Seuls les admins peuvent créer des clients');
+    return;
+  }
+
+  const donnees = {
+    nom: $('client-nom').value.trim(),
+    prenom: $('client-prenom').value.trim(),
+    email: $('client-email').value.trim(),
+    mot_de_passe: $('client-mot-de-passe').value,
+    msisdn: $('client-msisdn').value.trim(),
+    forfait_id: $('client-forfait-id').value ? Number($('client-forfait-id').value) : null,
+    statut: $('client-statut').value,
+  };
+
+  if (!donnees.nom || !donnees.prenom || !donnees.email || !donnees.mot_de_passe || !donnees.msisdn) {
+    afficherToast('Veuillez remplir tous les champs');
+    return;
+  }
+
+  const { utilisateur: utilisateurCree } = await SenegalConnectAPI.appelApi('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ nom: donnees.nom, prenom: donnees.prenom, email: donnees.email, mot_de_passe: donnees.mot_de_passe }),
+  });
+
+  await SenegalConnectAPI.appelApi('/api/clients', {
+    method: 'POST',
+    body: JSON.stringify({
+      utilisateur_id: utilisateurCree.id,
+      msisdn: donnees.msisdn,
+      forfait_id: donnees.forfait_id,
+      statut: donnees.statut,
+    }),
+  });
+
+  $('form-client').reset();
+  $('client-statut').value = 'actif';
+  afficherToast('Client créé avec succès');
+  chargerClients();
+});
 
 async function chargerForfaits() {
   const { data } = await SenegalConnectAPI.appelApi('/api/forfaits');
   const liste = $('liste-forfaits');
+  const select = $('client-forfait-id');
   liste.innerHTML = '';
+  select.innerHTML = '<option value="">Aucun forfait</option>';
+
   data.forEach((forfait) => {
     const item = document.createElement('li');
-    item.innerHTML = `<div class="sujet">${echapper(forfait.nom)}</div><div class="meta">${forfait.prix_mensuel_fcfa} FCFA/mois — ${forfait.nb_clients} abonné(s)</div>`;
+    item.className = 'item-gestion';
+    item.innerHTML = `
+      <div class="contenu">
+        <div class="sujet">${echapper(forfait.nom)}</div>
+        <div class="meta">${Number(forfait.prix_mensuel_fcfa).toLocaleString('fr-FR')} FCFA — ${forfait.nb_clients} abonné(s)</div>
+      </div>
+      <div class="boutons">
+        <button type="button" class="secondaire" data-forfait-action="editer" data-forfait-id="${forfait.id}">Éditer</button>
+        <button type="button" class="danger" data-forfait-action="supprimer" data-forfait-id="${forfait.id}">Suppr.</button>
+      </div>
+    `;
+
+    item.querySelector('[data-forfait-action="editer"]').addEventListener('click', async () => {
+      const { forfait: detail } = await SenegalConnectAPI.appelApi(`/api/forfaits/${forfait.id}`);
+      forfaitEnEdition = detail;
+      $('forfait-id').value = detail.id;
+      $('forfait-nom').value = detail.nom;
+      $('forfait-data').value = detail.quota_data_go;
+      $('forfait-voix').value = detail.quota_voix_min;
+      $('forfait-prix').value = detail.prix_mensuel_fcfa;
+      $('forfait-actif').checked = Boolean(detail.actif);
+      $('vue-forfaits').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    item.querySelector('[data-forfait-action="supprimer"]').addEventListener('click', async () => {
+      if (!await demanderConfirmation('Supprimer ce forfait ?', `Le forfait « ${forfait.nom} » sera supprimé définitivement.`)) return;
+      await SenegalConnectAPI.appelApi(`/api/forfaits/${forfait.id}`, { method: 'DELETE' });
+      afficherToast('Forfait supprimé');
+      chargerForfaits();
+    });
+
+    liste.appendChild(item);
+    const option = document.createElement('option');
+    option.value = forfait.id;
+    option.textContent = `${forfait.nom} — ${forfait.prix_mensuel_fcfa} FCFA`;
+    select.appendChild(option);
+  });
+}
+
+$('form-forfait').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const payload = {
+    nom: $('forfait-nom').value.trim(),
+    quota_data_go: Number($('forfait-data').value),
+    quota_voix_min: Number($('forfait-voix').value),
+    prix_mensuel_fcfa: Number($('forfait-prix').value),
+    actif: $('forfait-actif').checked,
+  };
+
+  if (!payload.nom || Number.isNaN(payload.quota_data_go) || Number.isNaN(payload.quota_voix_min) || Number.isNaN(payload.prix_mensuel_fcfa)) {
+    afficherToast('Vérifiez les champs du forfait');
+    return;
+  }
+
+  if (forfaitEnEdition) {
+    await SenegalConnectAPI.appelApi(`/api/forfaits/${forfaitEnEdition.id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    afficherToast('Forfait modifié');
+  } else {
+    await SenegalConnectAPI.appelApi('/api/forfaits', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    afficherToast('Forfait créé');
+  }
+
+  $('form-forfait').reset();
+  $('forfait-actif').checked = true;
+  forfaitEnEdition = null;
+  chargerForfaits();
+});
+
+$('bouton-annuler-forfait').addEventListener('click', () => {
+  $('form-forfait').reset();
+  $('forfait-actif').checked = true;
+  forfaitEnEdition = null;
+});
+
+async function chargerFactures() {
+  if (utilisateur.role !== 'admin') return;
+  const statut = $('filtre-facture-statut').value;
+  const periode = $('filtre-facture-periode').value;
+  const query = new URLSearchParams();
+  if (statut) query.set('statut', statut);
+  if (periode) query.set('periode', periode);
+
+  const { data } = await SenegalConnectAPI.appelApi(`/api/factures${query.toString() ? `?${query.toString()}` : ''}`);
+  const liste = $('liste-factures');
+  liste.innerHTML = '';
+
+  data.forEach((facture) => {
+    const item = document.createElement('li');
+    item.className = 'item-gestion';
+    item.innerHTML = `
+      <div class="contenu">
+        <div class="sujet">${echapper(facture.reference)} — ${Number(facture.montant_fcfa).toLocaleString('fr-FR')} FCFA</div>
+        <div class="meta">${echapper(facture.client_nom)} ${echapper(facture.client_prenom)} — ${echapper(facture.periode)} — ${badgeHtml(facture.statut)}</div>
+      </div>
+      <div class="boutons">
+        <button type="button" class="secondaire" data-facture-action="suivant" data-facture-id="${facture.id}">Statut</button>
+      </div>
+    `;
+
+    item.querySelector('[data-facture-action="suivant"]').addEventListener('click', async () => {
+      const prochainStatut = facture.statut === 'impayee' ? 'en_retard' : facture.statut === 'en_retard' ? 'payee' : 'impayee';
+      await SenegalConnectAPI.appelApi(`/api/factures/${facture.id}/statut`, {
+        method: 'PUT',
+        body: JSON.stringify({ statut: prochainStatut }),
+      });
+      afficherToast(`Facture mise à ${prochainStatut}`);
+      chargerFactures();
+    });
+
     liste.appendChild(item);
   });
 }
 
-// ============================================================
+$('form-facture').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (utilisateur.role !== 'admin') {
+    afficherToast('Accès réservé à l’admin');
+    return;
+  }
+
+  const payload = {
+    client_id: Number($('facture-client-id').value),
+    periode: $('facture-periode').value,
+    montant_fcfa: Number($('facture-montant').value),
+    date_echeance: $('facture-echeance').value,
+    statut: $('facture-statut').value,
+  };
+
+  await SenegalConnectAPI.appelApi('/api/factures', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+  $('form-facture').reset();
+  afficherToast('Facture créée');
+  chargerFactures();
+});
+
+$('bouton-recharger-factures').addEventListener('click', chargerFactures);
+$('filtre-facture-statut').addEventListener('change', chargerFactures);
+$('filtre-facture-periode').addEventListener('change', chargerFactures);
+
+async function chargerStats() {
+  if (utilisateur.role !== 'admin') return;
+  const { data } = await SenegalConnectAPI.appelApi('/api/stats');
+  $('stat-clients-actifs').textContent = data.clients_actifs;
+  $('stat-mrr').textContent = `${Number(data.mrr_fcfa).toLocaleString('fr-FR')} FCFA`;
+  $('stat-factures-impayees').textContent = data.factures_impayees;
+  $('stat-tickets-ouverts').textContent = data.tickets_ouverts;
+}
+
+$('bouton-profil').addEventListener('click', async () => {
+  try {
+    const { utilisateur: profil } = await SenegalConnectAPI.appelApi('/api/auth/profil');
+    const detail = document.createElement('div');
+    detail.className = 'profil-details';
+    const nom = document.createElement('strong');
+    nom.textContent = `${profil.nom} ${profil.prenom}`;
+    detail.appendChild(nom);
+    [['Email', profil.email], ['Rôle', profil.role], ['Identifiant', profil.id]].forEach(([libelle, valeur]) => {
+      const ligne = document.createElement('div');
+      ligne.textContent = `${libelle} : ${valeur}`;
+      detail.appendChild(ligne);
+    });
+    ouvrirModale('Mon profil', detail);
+  } catch (erreur) {
+    afficherToast(erreur.message || 'Impossible de charger le profil');
+  }
+});
 // APPELS (identique Phases 26-27)
 // ============================================================
 $('bouton-appel-audio').addEventListener('click', () => demarrerAppel('audio'));
@@ -433,6 +729,50 @@ function afficherToast(texte) {
   $('notifications-toast').appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
 }
+
+function ouvrirModale(titre, contenu, actions = []) {
+  const modale = $('modale');
+  $('titre-modale').textContent = titre;
+  $('corps-modale').replaceChildren(contenu);
+  $('actions-modale').replaceChildren(...actions);
+  modale.hidden = false;
+  $('bouton-fermer-modale').focus();
+}
+
+function fermerModale(resultat = false) {
+  const modale = $('modale');
+  const resoudre = modale.resoudreConfirmation;
+  modale.resoudreConfirmation = null;
+  modale.hidden = true;
+  $('corps-modale').replaceChildren();
+  $('actions-modale').replaceChildren();
+  if (resoudre) resoudre(resultat);
+}
+
+function demanderConfirmation(titre, message) {
+  return new Promise((resolve) => {
+    const texte = document.createElement('p');
+    texte.textContent = message;
+    const annuler = document.createElement('button');
+    annuler.type = 'button';
+    annuler.className = 'secondaire';
+    annuler.textContent = 'Annuler';
+    const confirmer = document.createElement('button');
+    confirmer.type = 'button';
+    confirmer.className = 'danger';
+    confirmer.textContent = 'Supprimer';
+    $('modale').resoudreConfirmation = resolve;
+    annuler.addEventListener('click', () => fermerModale(false));
+    confirmer.addEventListener('click', () => fermerModale(true));
+    ouvrirModale(titre, texte, [annuler, confirmer]);
+  });
+}
+
+$('bouton-fermer-modale').addEventListener('click', fermerModale);
+document.querySelector('[data-modale-fermer]').addEventListener('click', fermerModale);
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !$('modale').hidden) fermerModale();
+});
 
 function echapper(texte) {
   const div = document.createElement('div');
