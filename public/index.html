@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sénégal Connect — Support client</title>
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="barre-haut">
+      <h1>Sénégal Connect</h1>
+      <div class="barre-haut-droite">
+        <button id="bouton-profil" class="secondaire" type="button">Mon profil</button>
+        <span id="info-utilisateur"></span>
+        <span id="etat-socket" class="pastille-etat" title="État de la connexion en temps réel" aria-label="Connexion en temps réel indisponible" role="status"></span>
+        <button id="bouton-deconnexion" class="secondaire">Déconnexion</button>
+      </div>
+    </header>
+
+    <div class="corps">
+      <aside class="panneau-lateral" aria-label="Navigation et listes">
+        <nav class="onglets-nav" aria-label="Sections de support">
+          <button class="onglet-nav onglet-actif" data-onglet="tickets" aria-controls="vue-tickets" aria-selected="true">Tickets</button>
+          <button class="onglet-nav" id="onglet-bouton-clients" data-onglet="clients" aria-controls="vue-clients" aria-selected="false" hidden>Clients</button>
+          <button class="onglet-nav" data-onglet="forfaits" aria-controls="vue-forfaits" aria-selected="false">Forfaits</button>
+          <button class="onglet-nav" id="onglet-bouton-factures" data-onglet="factures" aria-controls="vue-factures" aria-selected="false" hidden>Factures</button>
+          <button class="onglet-nav" id="onglet-bouton-stats" data-onglet="stats" aria-controls="vue-stats" aria-selected="false" hidden>Stats</button>
+        </nav>
+
+        <div id="vue-tickets" class="vue-onglet">
+          <div id="form-nouveau-ticket" hidden>
+            <input id="champ-sujet-ticket" placeholder="Décrivez votre problème..." aria-label="Sujet du nouveau ticket" />
+            <button id="bouton-ouvrir-ticket">Ouvrir un ticket</button>
+          </div>
+          <ul id="liste-tickets" class="liste-simple"></ul>
+        </div>
+
+        <div id="vue-clients" class="vue-onglet" hidden>
+          <form id="form-client" class="form-gestion">
+            <h3>Créer un client</h3>
+            <div class="grille-form">
+              <input id="client-nom" placeholder="Nom" aria-label="Nom du client" required />
+              <input id="client-prenom" placeholder="Prénom" aria-label="Prénom du client" required />
+              <input id="client-email" type="email" placeholder="Email" aria-label="Email du client" required />
+              <input id="client-mot-de-passe" type="password" placeholder="Mot de passe" aria-label="Mot de passe du client" required />
+              <input id="client-msisdn" placeholder="+221XXXXXXXXX" aria-label="Numéro de téléphone du client" required />
+              <select id="client-forfait-id"></select>
+              <select id="client-statut">
+                <option value="actif">Actif</option>
+                <option value="suspendu">Suspendu</option>
+                <option value="resilie">Résilié</option>
+              </select>
+            </div>
+            <button type="submit" class="large">Créer le client</button>
+          </form>
+          <ul id="liste-clients" class="liste-simple"></ul>
+        </div>
+
+        <div id="vue-forfaits" class="vue-onglet" hidden>
+          <form id="form-forfait" class="form-gestion">
+            <h3>Ajouter / modifier un forfait</h3>
+            <input id="forfait-id" type="hidden" />
+            <div class="grille-form">
+              <input id="forfait-nom" placeholder="Nom du forfait" aria-label="Nom du forfait" required />
+              <input id="forfait-data" type="number" step="0.1" min="0" placeholder="Quota data (Go)" aria-label="Quota data en Go" required />
+              <input id="forfait-voix" type="number" min="0" placeholder="Quota voix (min)" aria-label="Quota voix en minutes" required />
+              <input id="forfait-prix" type="number" min="0" step="100" placeholder="Prix FCFA" aria-label="Prix mensuel en FCFA" required />
+              <label class="case-bool">
+                <input id="forfait-actif" type="checkbox" checked />
+                Actif
+              </label>
+            </div>
+            <div class="actions-inline">
+              <button type="submit" class="large">Enregistrer</button>
+              <button type="button" id="bouton-annuler-forfait" class="secondaire">Annuler</button>
+            </div>
+          </form>
+          <ul id="liste-forfaits" class="liste-simple"></ul>
+        </div>
+
+        <div id="vue-factures" class="vue-onglet" hidden>
+          <form id="form-facture" class="form-gestion">
+            <h3>Créer une facture</h3>
+            <div class="grille-form">
+              <select id="facture-client-id" required></select>
+              <input id="facture-periode" type="month" required />
+            <input id="facture-montant" type="number" min="0" step="100" placeholder="Montant FCFA" aria-label="Montant de la facture en FCFA" required />
+              <input id="facture-echeance" type="date" required />
+              <select id="facture-statut">
+                <option value="impayee">Impayée</option>
+                <option value="payee">Payée</option>
+                <option value="en_retard">En retard</option>
+              </select>
+            </div>
+            <button type="submit" class="large">Créer la facture</button>
+          </form>
+          <div class="barre-filtre">
+            <select id="filtre-facture-statut">
+              <option value="">Tous les statuts</option>
+              <option value="payee">Payée</option>
+              <option value="impayee">Impayée</option>
+              <option value="en_retard">En retard</option>
+            </select>
+            <input id="filtre-facture-periode" type="month" />
+            <button id="bouton-recharger-factures" class="secondaire" type="button">Actualiser</button>
+          </div>
+          <ul id="liste-factures" class="liste-simple"></ul>
+        </div>
+
+        <div id="vue-stats" class="vue-onglet" hidden>
+          <div class="stat-grid">
+            <div class="stat-card">
+              <span class="label-stat">Clients actifs</span>
+              <strong id="stat-clients-actifs">0</strong>
+            </div>
+            <div class="stat-card">
+              <span class="label-stat">MRR</span>
+              <strong id="stat-mrr">0 FCFA</strong>
+            </div>
+            <div class="stat-card">
+              <span class="label-stat">Factures impayées</span>
+              <strong id="stat-factures-impayees">0</strong>
+            </div>
+            <div class="stat-card">
+              <span class="label-stat">Tickets ouverts</span>
+              <strong id="stat-tickets-ouverts">0</strong>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="panneau-principal">
+        <div id="zone-sans-ticket" class="zone-vide">
+          <p>Sélectionnez un ticket dans la liste, ou ouvrez-en un nouveau.</p>
+        </div>
+
+        <div id="zone-ticket" hidden>
+          <header class="entete-ticket">
+            <div>
+              <h2 id="titre-ticket-actif"></h2>
+              <span id="statut-ticket-actif" class="badge-statut"></span>
+            </div>
+            <div class="actions-ticket">
+              <button id="bouton-prendre-en-charge" class="secondaire" hidden>Prendre en charge</button>
+              <button id="bouton-fermer-ticket" class="danger" hidden>Fermer le ticket</button>
+              <button id="bouton-appel-audio" class="secondaire" aria-label="Démarrer un appel audio">📞 Audio</button>
+              <button id="bouton-appel-video" class="secondaire" aria-label="Démarrer un appel vidéo">🎥 Vidéo</button>
+            </div>
+          </header>
+
+          <div id="panneau-appel" hidden>
+            <div class="conteneur-videos">
+              <video id="video-distante" autoplay playsinline></video>
+              <video id="video-locale" autoplay playsinline muted></video>
+            </div>
+            <div class="controles-appel">
+              <button id="bouton-raccrocher" class="danger">☎️ Raccrocher</button>
+              <button id="bouton-micro" class="secondaire">🎤 Couper micro</button>
+              <button id="bouton-camera" class="secondaire">📷 Couper caméra</button>
+              <button id="bouton-partage-ecran" class="secondaire">🖥️ Partager l'écran</button>
+            </div>
+            <p id="statut-appel" class="message-statut"></p>
+          </div>
+
+          <div id="zone-messages">
+            <div id="liste-messages"></div>
+            <p id="indicateur-frappe" class="indicateur-frappe"></p>
+          </div>
+
+          <div class="zone-saisie">
+            <div id="selecteur-emoji" class="selecteur-emoji" hidden></div>
+            <button id="bouton-emoji" class="secondaire bouton-icone" type="button" aria-label="Ajouter un emoji" title="Ajouter un emoji">😊</button>
+            <button id="bouton-joindre-fichier" class="secondaire bouton-icone" type="button" aria-label="Joindre un fichier" title="Joindre un fichier">📎</button>
+            <input id="champ-fichier" type="file" hidden accept="image/jpeg,image/png,application/pdf,audio/mpeg,audio/wav,audio/ogg" />
+            <input id="champ-message" placeholder="Écrire un message..." aria-label="Message" autocomplete="off" />
+            <button id="bouton-envoyer-message">Envoyer</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="notifications-toast"></div>
+
+  <div id="modale" class="modale" hidden>
+    <div class="modale-fond" data-modale-fermer></div>
+    <section class="modale-contenu" role="dialog" aria-modal="true" aria-labelledby="titre-modale">
+      <div class="modale-entete"><h2 id="titre-modale"></h2><button id="bouton-fermer-modale" class="secondaire bouton-icone" type="button" aria-label="Fermer">×</button></div>
+      <div id="corps-modale"></div>
+      <div id="actions-modale" class="actions-modale"></div>
+    </section>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="vendor/peerjs.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/webrtc.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

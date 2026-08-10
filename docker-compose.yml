@@ -1,0 +1,65 @@
+# docker-compose.yml
+# Rôle : orchestre les 2 services de la plateforme — l'API Sénégal
+# Connect et sa base PostgreSQL — avec initialisation automatique du
+# schéma et attente réelle de disponibilité de la base avant de
+# démarrer l'API (pas seulement l'ordre de lancement des containers).
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: senegal-connect-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      # Prévaut sur la valeur "localhost" du .env local (développement
+      # hors Docker) — à l'intérieur du réseau Compose, PostgreSQL est
+      # joignable via son nom de service, résolu par le DNS interne.
+      DB_HOST: postgres
+      DB_PORT: 5432
+      NODE_ENV: production
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - senegal-connect-reseau
+
+  postgres:
+    image: postgres:14-alpine
+    container_name: senegal-connect-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Exécuté automatiquement par l'image officielle UNE SEULE FOIS,
+      # uniquement si le volume pgdata est vide au premier démarrage.
+      - ./docs/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    networks:
+      - senegal-connect-reseau
+    # Aucun port mappé vers l'hôte par défaut — PostgreSQL n'est
+    # accessible que depuis le réseau interne Docker (service "api").
+    # Pour un accès de debug ponctuel depuis la machine hôte, ajoute
+    # temporairement : ports: ["5433:5432"]
+
+networks:
+  senegal-connect-reseau:
+    driver: bridge
+
+volumes:
+  pgdata:

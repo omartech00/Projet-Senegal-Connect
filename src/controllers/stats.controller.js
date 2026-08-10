@@ -1,5 +1,12 @@
 // src/controllers/stats.controller.js
-// Couche : controller — domaine : stats
-// Rôle : reçoit req/res, appelle le service, formate la réponse HTTP.
-// Sera implémenté en Phase 16.
-module.exports = {};
+// Rôle : lit req (aucun paramètre ici), appelle le service, renvoie
+// la réponse HTTP.
+
+const statsService = require('../services/stats.service');
+
+async function tableauDeBord(req, res) {
+  const stats = await statsService.obtenirStats();
+  res.status(200).json({ data: stats });
+}
+
+module.exports = { tableauDeBord };
