@@ -1,208 +1,282 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Senegal Connect — Support Client</title>
-  <link rel="stylesheet" href="/css/app.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Senegal Connect — Support Client Premium</title>
+  <link rel="stylesheet" href="/css/app.css" />
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
   <div id="app">
-    <!-- LOGIN SCREEN -->
     <div id="login-screen" class="screen active">
-      <div class="login-container">
-        <div class="logo">
-          <h1>Senegal Connect</h1>
-          <p class="subtitle">API REST — Support Client Temps Reel</p>
+      <div class="auth-shell">
+        <div class="auth-visual">
+          <div class="auth-badge">Senegal Connect</div>
+          <h1>Support client moderne</h1>
+          <p>Gestion des clients, factures et assistance temps réel dans une interface élégante et professionnelle.</p>
+          <div class="feature-grid">
+            <div>
+              <span>✔</span>
+              <p>Tableau de bord performant</p>
+            </div>
+            <div>
+              <span>✔</span>
+              <p>Tickets en direct</p>
+            </div>
+            <div>
+              <span>✔</span>
+              <p>Appels audio & vidéo</p>
+            </div>
+          </div>
         </div>
-        <div class="tabs">
-          <button class="tab active" onclick="showAuthTab('login')">Connexion</button>
-          <button class="tab" onclick="showAuthTab('register')">Inscription</button>
+        <div class="auth-panel">
+          <div class="auth-tabs">
+            <button class="tab active" onclick="showAuthTab('login', event)">Connexion</button>
+            <button class="tab" onclick="showAuthTab('register', event)">Inscription</button>
+          </div>
+
+          <div class="auth-card">
+            <form id="login-form" class="auth-form">
+              <div class="form-title">Bienvenue</div>
+              <div class="form-subtitle">Connectez-vous pour gérer le support client.</div>
+              <div class="form-group">
+                <label for="login-email">Email</label>
+                <input type="email" id="login-email" required placeholder="admin@senegalconnect.sn" />
+              </div>
+              <div class="form-group">
+                <label for="login-password">Mot de passe</label>
+                <input type="password" id="login-password" required placeholder="••••••••" />
+              </div>
+              <button type="submit" class="btn btn-primary">Se connecter</button>
+              <p class="hint" id="login-error"></p>
+            </form>
+
+            <form id="register-form" class="auth-form">
+              <div class="form-title">Créez un compte</div>
+              <div class="form-subtitle">Accédez à toutes les fonctionnalités de l’application.</div>
+              <div class="two-column-row">
+                <div class="form-group">
+                  <label for="reg-nom">Nom</label>
+                  <input type="text" id="reg-nom" required />
+                </div>
+                <div class="form-group">
+                  <label for="reg-prenom">Prénom</label>
+                  <input type="text" id="reg-prenom" required />
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="reg-email">Email</label>
+                <input type="email" id="reg-email" required />
+              </div>
+              <div class="form-group">
+                <label for="reg-password">Mot de passe</label>
+                <input type="password" id="reg-password" required minlength="8" />
+              </div>
+              <div class="form-group">
+                <label for="reg-role">Rôle</label>
+                <select id="reg-role">
+                  <option value="client">Client</option>
+                  <option value="agent">Agent</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary">S'inscrire</button>
+              <p class="hint" id="register-error"></p>
+            </form>
+          </div>
         </div>
-        <form id="login-form" class="auth-form">
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="login-email" required placeholder="admin@senegalconnect.sn">
-          </div>
-          <div class="form-group">
-            <label>Mot de passe</label>
-            <input type="password" id="login-password" required placeholder="••••••••">
-          </div>
-          <button type="submit" class="btn btn-primary">Se connecter</button>
-          <p class="hint" id="login-error"></p>
-        </form>
-        <form id="register-form" class="auth-form" style="display:none">
-          <div class="form-group">
-            <label>Nom</label>
-            <input type="text" id="reg-nom" required>
-          </div>
-          <div class="form-group">
-            <label>Prenom</label>
-            <input type="text" id="reg-prenom" required>
-          </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="reg-email" required>
-          </div>
-          <div class="form-group">
-            <label>Mot de passe</label>
-            <input type="password" id="reg-password" required minlength="8">
-          </div>
-          <div class="form-group">
-            <label>Role</label>
-            <select id="reg-role">
-              <option value="client">Client</option>
-              <option value="agent">Agent</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-          <button type="submit" class="btn btn-primary">S'inscrire</button>
-          <p class="hint" id="register-error"></p>
-        </form>
       </div>
     </div>
 
-    <!-- MAIN APP -->
     <div id="main-screen" class="screen">
       <nav class="navbar">
-        <div class="nav-brand">Senegal Connect</div>
-        <div class="nav-user">
-          <span id="nav-user-info"></span>
-          <button class="btn btn-sm" onclick="logout()">Deconnexion</button>
+        <div class="brand-section">
+          <div class="brand-logo">SC</div>
+          <div>
+            <div class="brand-title">Senegal Connect</div>
+            <div class="brand-tag">Plateforme support télécom</div>
+          </div>
+        </div>
+        <div class="nav-actions">
+          <div class="status-pill">Connecté</div>
+          <div class="profile-pill" id="nav-user-info"></div>
+          <button class="btn btn-outline" onclick="logout()">Déconnexion</button>
         </div>
       </nav>
 
       <div class="main-layout">
-        <!-- SIDEBAR -->
         <aside class="sidebar">
+          <div class="sidebar-top">
+            <span class="sidebar-mark">Gestion</span>
+            <h2>Support Pro</h2>
+          </div>
           <div class="sidebar-menu">
             <button class="menu-item active" data-section="dashboard" onclick="showSection('dashboard')">Tableau de bord</button>
             <button class="menu-item" data-section="clients" onclick="showSection('clients')">Clients</button>
             <button class="menu-item" data-section="forfaits" onclick="showSection('forfaits')">Forfaits</button>
             <button class="menu-item" data-section="factures" onclick="showSection('factures')">Factures</button>
-            <button class="menu-item" data-section="tickets" onclick="showSection('tickets')">Tickets Support</button>
+            <button class="menu-item" data-section="tickets" onclick="showSection('tickets')">Tickets support</button>
+          </div>
+          <div class="sidebar-footer">
+            <span>Version 1.0</span>
           </div>
         </aside>
 
-        <!-- CONTENT -->
         <main class="content">
-          <!-- DASHBOARD -->
           <section id="section-dashboard" class="section active">
-            <h2>Tableau de bord</h2>
+            <div class="section-hero">
+              <div>
+                <span class="eyebrow">Tableau de bord</span>
+                <h1>Performance & support client</h1>
+                <p>Suivez vos KPI clés et prenez des décisions éclairées rapidement.</p>
+              </div>
+              <div class="hero-badges">
+                <div class="badge badge-soft">Temps réel</div>
+                <div class="badge badge-soft">Opérateur</div>
+                <div class="badge badge-soft">Monitoring</div>
+              </div>
+            </div>
             <div class="stats-grid">
-              <div class="stat-card">
+              <article class="stat-card gradient-1">
+                <div class="stat-title">Clients actifs</div>
                 <div class="stat-number" id="stat-clients">-</div>
-                <div class="stat-label">Clients Actifs</div>
-              </div>
-              <div class="stat-card">
+              </article>
+              <article class="stat-card gradient-2">
+                <div class="stat-title">MRR (FCFA)</div>
                 <div class="stat-number" id="stat-mrr">-</div>
-                <div class="stat-label">MRR (FCFA)</div>
-              </div>
-              <div class="stat-card">
+              </article>
+              <article class="stat-card gradient-3">
+                <div class="stat-title">Factures impayées</div>
                 <div class="stat-number" id="stat-impayees">-</div>
-                <div class="stat-label">Factures Impayees</div>
-              </div>
-              <div class="stat-card">
+              </article>
+              <article class="stat-card gradient-4">
+                <div class="stat-title">Tickets ouverts</div>
                 <div class="stat-number" id="stat-tickets">-</div>
-                <div class="stat-label">Tickets Ouverts</div>
-              </div>
+              </article>
             </div>
           </section>
 
-          <!-- CLIENTS -->
           <section id="section-clients" class="section">
-            <div class="section-header">
-              <h2>Clients</h2>
-              <button class="btn btn-primary" onclick="showModal('add-client')">+ Nouveau Client</button>
+            <div class="section-hero section-hero-compact">
+              <div>
+                <span class="eyebrow">Clients</span>
+                <h2>Abonnés</h2>
+                <p>Un espace clair pour trier, filtrer et gérer vos abonnés telecom.</p>
+              </div>
+              <button class="btn btn-primary" onclick="showModal('add-client')">+ Nouveau client</button>
             </div>
-            <div class="filters">
-              <input type="text" id="client-search" placeholder="Rechercher (nom, MSISDN, email)..." oninput="loadClients()">
+            <div class="controls-row">
+              <input type="text" id="client-search" placeholder="Rechercher nom, MSISDN ou email" oninput="loadClients()" />
               <select id="client-filter-statut" onchange="loadClients()">
                 <option value="">Tous les statuts</option>
                 <option value="actif">Actif</option>
                 <option value="suspendu">Suspendu</option>
-                <option value="resilie">Resilie</option>
+                <option value="resilie">Resilié</option>
               </select>
             </div>
-            <table class="data-table">
-              <thead>
-                <tr><th>ID</th><th>Nom</th><th>Prenom</th><th>MSISDN</th><th>Email</th><th>Forfait</th><th>Statut</th><th>Actions</th></tr>
-              </thead>
-              <tbody id="clients-table-body"></tbody>
-            </table>
+            <div class="table-card">
+              <table class="data-table">
+                <thead>
+                  <tr><th>ID</th><th>Nom</th><th>Prénom</th><th>MSISDN</th><th>Forfait</th><th>Statut</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="clients-table-body"></tbody>
+              </table>
+            </div>
             <div class="pagination" id="clients-pagination"></div>
           </section>
 
-          <!-- FORFAITS -->
           <section id="section-forfaits" class="section">
-            <div class="section-header">
-              <h2>Forfaits</h2>
-              <button class="btn btn-primary" onclick="showModal('add-forfait')">+ Nouveau Forfait</button>
+            <div class="section-hero section-hero-compact">
+              <div>
+                <span class="eyebrow">Forfaits</span>
+                <h2>Offres et abonnements</h2>
+                <p>Un aperçu produit de tous les forfaits disponibles et leur popularité.</p>
+              </div>
+              <button class="btn btn-primary" onclick="showModal('add-forfait')">+ Nouveau forfait</button>
             </div>
             <div class="forfaits-grid" id="forfaits-grid"></div>
           </section>
 
-          <!-- FACTURES -->
           <section id="section-factures" class="section">
-            <div class="section-header">
-              <h2>Factures</h2>
-              <button class="btn btn-primary" onclick="showModal('add-facture')">+ Nouvelle Facture</button>
+            <div class="section-hero section-hero-compact">
+              <div>
+                <span class="eyebrow">Factures</span>
+                <h2>Gestion de la facturation</h2>
+                <p>Simplifiez le suivi des paiements et repérez facilement les factures en retard.</p>
+              </div>
+              <button class="btn btn-primary" onclick="showModal('add-facture')">+ Nouvelle facture</button>
             </div>
-            <div class="filters">
+            <div class="controls-row">
               <select id="facture-filter-statut" onchange="loadFactures()">
                 <option value="">Tous les statuts</option>
-                <option value="payee">Payee</option>
-                <option value="impayee">Impayee</option>
+                <option value="payee">Payée</option>
+                <option value="impayee">Impayée</option>
                 <option value="en_retard">En retard</option>
               </select>
-              <input type="text" id="facture-filter-periode" placeholder="Periode (YYYY-MM)" oninput="loadFactures()">
+              <input type="text" id="facture-filter-periode" placeholder="Période (YYYY-MM)" oninput="loadFactures()" />
             </div>
-            <table class="data-table">
-              <thead>
-                <tr><th>Reference</th><th>Client</th><th>Periode</th><th>Montant (FCFA)</th><th>Statut</th><th>Echeance</th><th>Actions</th></tr>
-              </thead>
-              <tbody id="factures-table-body"></tbody>
-            </table>
+            <div class="table-card">
+              <table class="data-table">
+                <thead>
+                  <tr><th>Réf.</th><th>Client</th><th>Période</th><th>Montant</th><th>Statut</th><th>Echéance</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="factures-table-body"></tbody>
+              </table>
+            </div>
             <div class="pagination" id="factures-pagination"></div>
           </section>
 
-          <!-- TICKETS -->
           <section id="section-tickets" class="section">
-            <div class="section-header">
-              <h2>Tickets Support</h2>
-              <button class="btn btn-primary" onclick="showModal('add-ticket')">+ Nouveau Ticket</button>
+            <div class="section-hero section-hero-compact">
+              <div>
+                <span class="eyebrow">Tickets</span>
+                <h2>Support client</h2>
+                <p>Un espace de suivi moderne pour vos tickets et conversations en direct.</p>
+              </div>
+              <button class="btn btn-primary" onclick="showModal('add-ticket')">+ Nouveau ticket</button>
             </div>
             <div class="tickets-layout">
-              <div class="tickets-list" id="tickets-list"></div>
-              <div class="chat-panel" id="chat-panel" style="display:none">
-                <div class="chat-header" id="chat-header">
-                  <span id="chat-ticket-info"></span>
+              <aside class="tickets-aside" id="tickets-list"></aside>
+              <div class="chat-area">
+                <div class="ticket-placeholder" id="ticket-placeholder">
+                  <div class="placeholder-card">
+                    <span class="eyebrow">Aucune conversation active</span>
+                    <h3>Choisissez un ticket pour ouvrir le chat</h3>
+                    <p>La zone de discussion s'affichera uniquement après la sélection d'une session de support.</p>
+                  </div>
+                </div>
+                <section class="chat-panel" id="chat-panel" style="display:none;">
+                  <div class="chat-header" id="chat-header">
+                  <div>
+                    <span class="eyebrow">Conversation</span>
+                    <strong id="chat-ticket-info">Sélectionnez un ticket pour démarrer</strong>
+                  </div>
                   <div class="chat-actions">
-                    <button class="btn btn-sm btn-success" onclick="initAppel('audio')" title="Appel audio">Audio</button>
-                    <button class="btn btn-sm btn-primary" onclick="initAppel('video')" title="Appel video">Video</button>
+                    <button class="btn btn-sm btn-success" onclick="initAppel('audio')">Audio</button>
+                    <button class="btn btn-sm btn-primary" onclick="initAppel('video')">Vidéo</button>
+                    <button class="btn btn-sm btn-outline" id="btn-fullscreen-chat" onclick="toggleChatFullScreen()" title="Agrandir le chat">⤢</button>
                     <button class="btn btn-sm" onclick="closeChat()">Fermer</button>
                   </div>
                 </div>
                 <div class="chat-messages" id="chat-messages"></div>
-                <div class="typing-indicator" id="typing-indicator" style="display:none"></div>
+                <div class="typing-indicator" id="typing-indicator"></div>
                 <div class="chat-input-area">
                   <button class="btn-icon" onclick="triggerFileUpload()" title="Partager un fichier">+</button>
-                  <input type="file" id="file-input" style="display:none" onchange="uploadFile(this)" accept="image/*,application/pdf,audio/*">
-                  <button class="btn-icon" onclick="toggleEmojiPicker()" title="Emoji">&#128578;</button>
-                  <input type="text" id="message-input" placeholder="Ecrire un message..." onkeydown="handleMessageKeydown(event)" oninput="handleTyping()">
+                  <input type="file" id="file-input" style="display:none" onchange="uploadFile(this)" accept="image/*,application/pdf,audio/*" />
+                  <button class="btn-icon" onclick="toggleEmojiPicker()" title="Emoji">😊</button>
+                  <input type="text" id="message-input" placeholder="Écrire un message..." onkeydown="handleMessageKeydown(event)" oninput="handleTyping()" />
                   <button class="btn btn-primary" onclick="sendMessage()">Envoyer</button>
                 </div>
-                <div class="emoji-picker" id="emoji-picker" style="display:none"></div>
-              </div>
+                <div class="emoji-picker" id="emoji-picker"></div>
+              </section>
             </div>
           </section>
         </main>
       </div>
     </div>
 
-    <!-- VIDEO CALL MODAL -->
     <div id="video-call-modal" class="modal" style="display:none">
       <div class="modal-content video-call-container">
         <div class="video-grid">
@@ -216,14 +290,13 @@
         </div>
         <div class="call-controls">
           <button class="call-btn" id="btn-mute" onclick="toggleMicro()" title="Micro">Micro</button>
-          <button class="call-btn" id="btn-camera" onclick="toggleCamera()" title="Camera">Camera</button>
-          <button class="call-btn" id="btn-screen" onclick="toggleScreenShare()" title="Partage ecran">Ecran</button>
+          <button class="call-btn" id="btn-camera" onclick="toggleCamera()" title="Caméra">Caméra</button>
+          <button class="call-btn" id="btn-screen" onclick="toggleScreenShare()" title="Partage écran">Écran</button>
           <button class="call-btn call-btn-end" onclick="terminerAppel()" title="Raccrocher">Raccrocher</button>
         </div>
       </div>
     </div>
 
-    <!-- INCOMING CALL MODAL -->
     <div id="incoming-call-modal" class="modal" style="display:none">
       <div class="modal-content incoming-call">
         <h3>Appel entrant</h3>
@@ -235,7 +308,6 @@
       </div>
     </div>
 
-    <!-- GENERIC MODAL -->
     <div id="generic-modal" class="modal" style="display:none">
       <div class="modal-content" id="generic-modal-content"></div>
     </div>

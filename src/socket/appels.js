@@ -1,6 +1,43 @@
 const db = require('../config/db');
 const logger = require('../config/logger');
 
+function escapeHtml(str) {
+  if (!str) return str;
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function formatUserName(prenom, nom) {
+  return [prenom, nom].filter(Boolean).join(' ') || nom || prenom || 'Utilisateur';
+}
+
+async function addCallHistoryMessage(io, ticketId, expediteurId, expediteurNom, expediteurPrenom, content) {
+  const result = await db.query(
+    `INSERT INTO messages (ticket_id, expediteur_id, type, contenu, fichier_url, fichier_nom, fichier_taille)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [ticketId, expediteurId, 'texte', escapeHtml(content), null, null, null]
+  );
+
+  const message = result.rows[0];
+
+  await db.query(
+    `INSERT INTO messages_statut (message_id, utilisateur_id, statut)
+     VALUES ($1, $2, 'envoye')
+     ON CONFLICT (message_id, utilisateur_id) DO NOTHING`,
+    [message.id, expediteurId]
+  );
+
+  io.to(`ticket:${ticketId}`).emit('message:nouveau', {
+    ...message,
+    expediteur_nom: expediteurNom,
+    expediteur_prenom: expediteurPrenom,
+  });
+}
+
 function initAppels(io) {
   io.on('connection', (socket) => {
     const user = socket.data.user;
@@ -91,6 +128,15 @@ function initAppels(io) {
         const appelResult = await db.query('SELECT * FROM appels WHERE id = $1', [appelId]);
         const appel = appelResult.rows[0];
 
+        await addCallHistoryMessage(
+          io,
+          appel.ticket_id,
+          user.id,
+          user.nom,
+          user.prenom,
+          `Appel refusé par ${formatUserName(user.prenom, user.nom)}`
+        );
+
         io.to(`user:${appel.initiateur_id}`).emit('appel:refuse', { appelId });
 
         logger.info(`Appel #${appelId} refuse par ${user.nom}`);
@@ -115,6 +161,15 @@ function initAppels(io) {
         await db.query(
           "UPDATE appels SET statut = 'termine', duree_secondes = $1, fin_le = NOW() WHERE id = $2",
           [duree, appelId]
+        );
+
+        await addCallHistoryMessage(
+          io,
+          appel.ticket_id,
+          user.id,
+          user.nom,
+          user.prenom,
+          `Appel terminé (${duree}s) par ${formatUserName(user.prenom, user.nom)}`
         );
 
         io.to(`user:${appel.initiateur_id}`).emit('appel:termine', { appelId, duree_secondes: duree });

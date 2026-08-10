@@ -21,12 +21,16 @@ const api = async (method, path, body) => {
   return data;
 };
 
-function showAuthTab(tab) {
+function showAuthTab(tab, event) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
   document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
-  event.target.classList.add('active');
+  if (event && event.target) event.target.classList.add('active');
 }
+
+window.addEventListener('DOMContentLoaded', () => {
+  showAuthTab('login');
+});
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -210,6 +214,10 @@ function showSection(name) {
   document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
   document.querySelector(`.menu-item[data-section="${name}"]`).classList.add('active');
 
+  const pageContent = document.querySelector('main.content');
+  if (pageContent) pageContent.scrollTop = 0;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
   if (name === 'dashboard') loadDashboard();
   else if (name === 'clients') loadClients();
   else if (name === 'forfaits') loadForfaits();
@@ -253,7 +261,7 @@ async function loadClients() {
         <td>${c.forfait_nom || '-'}</td>
         <td><span class="status-badge status-${c.statut}">${c.statut}</span></td>
         <td>
-          <button class="btn btn-sm" onclick="deleteClient(${c.id})">Suppr</button>
+          <button class="table-btn" onclick="deleteClient(${c.id})">Suppr</button>
         </td>
       </tr>
     `).join('');
@@ -270,13 +278,14 @@ async function loadClients() {
 }
 
 async function deleteClient(id) {
-  if (!confirm('Supprimer ce client ?')) return;
-  try {
-    await api('DELETE', `/clients/${id}`);
-    loadClients();
-  } catch (err) {
-    alert(err.erreur || 'Erreur');
-  }
+  showConfirm('Supprimer ce client ?', async () => {
+    try {
+      await api('DELETE', `/clients/${id}`);
+      loadClients();
+    } catch (err) {
+      alert(err.erreur || 'Erreur');
+    }
+  });
 }
 
 async function loadForfaits() {
@@ -300,13 +309,14 @@ async function loadForfaits() {
 }
 
 async function deleteForfait(id) {
-  if (!confirm('Supprimer ce forfait ?')) return;
-  try {
-    await api('DELETE', `/forfaits/${id}`);
-    loadForfaits();
-  } catch (err) {
-    alert(err.erreur || 'Erreur');
-  }
+  showConfirm('Supprimer ce forfait ?', async () => {
+    try {
+      await api('DELETE', `/forfaits/${id}`);
+      loadForfaits();
+    } catch (err) {
+      alert(err.erreur || 'Erreur');
+    }
+  });
 }
 
 async function loadFactures() {
@@ -364,7 +374,7 @@ async function loadTickets() {
   try {
     const data = await api('GET', '/tickets');
     document.getElementById('tickets-list').innerHTML = data.data.map(t => `
-      <div class="ticket-item" onclick="openTicket(${t.id})">
+      <div class="ticket-item" onclick="openTicket(${t.id}, this)">
         <h4>#${t.id} — ${t.sujet}</h4>
         <p>${t.client_nom ? t.client_prenom + ' ' + t.client_nom : ''} ${t.agent_nom ? '| Agent: ' + t.agent_prenom + ' ' + t.agent_nom : ''}</p>
         <p><span class="status-badge status-${t.statut}">${t.statut}</span></p>
@@ -375,13 +385,16 @@ async function loadTickets() {
   }
 }
 
-async function openTicket(id) {
+async function openTicket(id, el) {
   currentTicketId = id;
-  document.getElementById('chat-panel').style.display = 'flex';
+  const chatPanel = document.getElementById('chat-panel');
+  const placeholder = document.getElementById('ticket-placeholder');
+  placeholder.style.display = 'none';
+  chatPanel.style.display = 'flex';
   document.getElementById('chat-ticket-info').textContent = `Ticket #${id}`;
 
-  document.querySelectorAll('.ticket-item').forEach(el => el.classList.remove('active'));
-  event?.target?.closest('.ticket-item')?.classList.add('active');
+  document.querySelectorAll('.ticket-item').forEach(item => item.classList.remove('active'));
+  if (el) el.classList.add('active');
 
   try {
     const messages = await api('GET', `/tickets/${id}/messages`);
@@ -394,6 +407,12 @@ async function openTicket(id) {
   } catch (err) {
     console.error('Erreur openTicket:', err);
   }
+}
+
+function closeChat() {
+  currentTicketId = null;
+  document.getElementById('chat-panel').style.display = 'none';
+  document.getElementById('ticket-placeholder').style.display = 'flex';
 }
 
 function appendMessage(msg) {
@@ -417,8 +436,9 @@ function appendMessage(msg) {
     ? `<div class="read-status" id="read-status-${msg.id}">${msg.statut === 'lu' ? '✓✓ lu' : '✓'}</div>`
     : '';
 
+  const senderName = isSent ? 'Vous' : ([msg.expediteur_prenom, msg.expediteur_nom].filter(Boolean).join(' ') || msg.expediteur_nom || msg.expediteur_prenom || 'Utilisateur');
   div.innerHTML = `
-    <div class="sender">${isSent ? 'Vous' : (msg.expediteur_prenom + ' ' + msg.expediteur_nom)}</div>
+    <div class="sender">${senderName}</div>
     <div>${content}</div>
     <div style="font-size:.65em;opacity:.6;text-align:right">${new Date(msg.envoye_le).toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})}</div>
     ${readStatus}
@@ -504,11 +524,6 @@ function insertEmoji(emoji) {
   document.getElementById('emoji-picker').style.display = 'none';
 }
 
-function closeChat() {
-  currentTicketId = null;
-  document.getElementById('chat-panel').style.display = 'none';
-}
-
 function showModal(type) {
   const modal = document.getElementById('generic-modal');
   const content = document.getElementById('generic-modal-content');
@@ -564,6 +579,94 @@ function showModal(type) {
 
 function closeModal() {
   document.getElementById('generic-modal').style.display = 'none';
+}
+
+function showAlert(message, title = 'Notification') {
+  const modal = document.getElementById('generic-modal');
+  const content = document.getElementById('generic-modal-content');
+  content.innerHTML = `
+    <h3>${title}</h3>
+    <p>${message}</p>
+    <div class="confirm-actions" style="display:flex;gap:12px;margin-top:16px">
+      <button class="btn btn-primary" id="alert-ok">OK</button>
+    </div>
+  `;
+
+  const ok = document.getElementById('alert-ok');
+  ok.addEventListener('click', () => closeModal(), { once: true });
+  modal.style.display = 'flex';
+}
+
+/* Confirmation modal helper */
+function showConfirm(message, onConfirm) {
+  const modal = document.getElementById('generic-modal');
+  const content = document.getElementById('generic-modal-content');
+  content.innerHTML = `
+    <h3>Confirmation</h3>
+    <p>${message}</p>
+    <div class="confirm-actions" style="display:flex;gap:12px;margin-top:16px">
+      <button class="btn btn-primary" id="confirm-yes">Confirmer</button>
+      <button class="btn" id="confirm-no">Annuler</button>
+    </div>
+  `;
+
+  const yes = document.getElementById('confirm-yes');
+  const no = document.getElementById('confirm-no');
+
+  const cleanup = () => { try { yes.removeEventListener('click', yes._cb); } catch(e){} try { no.removeEventListener('click', no._cb); } catch(e){} };
+
+  yes._cb = async () => {
+    try {
+      await Promise.resolve(onConfirm());
+    } finally {
+      cleanup();
+      closeModal();
+    }
+  };
+  no._cb = () => { cleanup(); closeModal(); };
+
+  yes.addEventListener('click', yes._cb);
+  no.addEventListener('click', no._cb);
+
+  modal.style.display = 'flex';
+}
+
+function toggleChatFullScreen() {
+  const panel = document.getElementById('chat-panel');
+  const btn = document.getElementById('btn-fullscreen-chat');
+  if (!panel) return;
+  const isFull = panel.classList.toggle('chat-fullscreen');
+  if (isFull) {
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.classList.add('chat-enter');
+    document.body.classList.add('chat-fullscreen-open');
+    document.body.style.overflow = 'hidden';
+    if (btn) { btn.textContent = '✕'; btn.setAttribute('aria-label', 'Fermer le chat (Esc)'); }
+    // listen for Esc to close
+    document.addEventListener('keydown', _escCloseChat);
+  } else {
+    panel.removeAttribute('role');
+    panel.removeAttribute('aria-modal');
+    document.body.classList.remove('chat-fullscreen-open');
+    document.body.style.overflow = '';
+    if (btn) { btn.textContent = '⤢'; btn.setAttribute('aria-label', 'Agrandir le chat'); }
+    document.removeEventListener('keydown', _escCloseChat);
+  }
+  // small animation class swap
+  setTimeout(() => panel.classList.remove('chat-enter'), 220);
+  // ensure messages container resizes and stays scrolled to bottom
+  setTimeout(() => {
+    const container = document.getElementById('chat-messages');
+    if (container) container.scrollTop = container.scrollHeight;
+  }, 120);
+}
+
+function _escCloseChat(e) {
+  if (e.key === 'Escape') {
+    const panel = document.getElementById('chat-panel');
+    if (panel && panel.classList.contains('chat-fullscreen')) toggleChatFullScreen();
+  }
 }
 
 async function submitNewClient(e) {

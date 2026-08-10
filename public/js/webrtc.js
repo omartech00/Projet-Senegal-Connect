@@ -165,8 +165,14 @@ function showVideoModal(type) {
 
 function handleIncomingCall(data) {
   incomingCallData = data;
+  const initiateur = data?.initiateur || {};
+  const prenom = initiateur.prenom || data?.prenom || '';
+  const nom = initiateur.nom || data?.nom || '';
+  const callerName = [prenom, nom].filter(Boolean).join(' ') || 'Un utilisateur';
+  const callTypeLabel = data?.type === 'audio' ? 'audio' : 'vidéo';
+
   document.getElementById('incoming-call-info').textContent =
-    `${data.initiateur.prenom} ${data.initiateur.nom} — Appel ${data.type}`;
+    `${callerName} — Appel ${callTypeLabel}`;
   document.getElementById('incoming-call-modal').style.display = 'flex';
 }
 
@@ -274,7 +280,11 @@ function handleCallEnded() {
 }
 
 function handleCallRefused() {
-  alert('Appel refuse');
+  if (typeof showAlert === 'function') {
+    showAlert('Votre appel a été refusé.', 'Appel refusé');
+  } else {
+    alert('Appel refuse');
+  }
   endCallCleanup();
 }
 

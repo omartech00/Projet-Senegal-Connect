@@ -114,7 +114,7 @@ router.post('/login', [
       return res.status(401).json({ erreur: 'Identifiants incorrects' });
     }
 
-    const payload = { id: user.id, nom: user.nom, email: user.email, role: user.role };
+    const payload = { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role };
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES, issuer: 'senegal-connect' });
 
     res.json({
