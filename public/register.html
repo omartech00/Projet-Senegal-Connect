@@ -4,25 +4,37 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Inscription — Sénégal Connect</title>
+  <meta name="theme-color" content="#070b16" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/app.css" />
 </head>
 <body class="fond-auth">
   <div class="carte-auth">
-    <h1>Sénégal Connect</h1>
-    <p class="sous-titre">Créer un compte client</p>
+    <div class="marque">
+      <div class="logo">SC</div>
+      <div class="marque-texte">
+        <strong>Sénégal Connect</strong>
+        <span>Espace support client</span>
+      </div>
+    </div>
+
+    <h1>Créer un compte</h1>
+    <p class="sous-titre">Rejoignez votre espace support</p>
 
     <form id="formulaire-inscription">
       <div class="ligne-double">
-        <label>Prénom<input id="champ-prenom" required /></label>
-        <label>Nom<input id="champ-nom" required /></label>
+        <label>Prénom<input id="champ-prenom" placeholder="Aminata" required /></label>
+        <label>Nom<input id="champ-nom" placeholder="Diallo" required /></label>
       </div>
-      <label>Email
-        <input id="champ-email" type="email" required autocomplete="username" />
+      <label>Adresse email
+        <input id="champ-email" type="email" placeholder="vous@exemple.com" required autocomplete="username" />
       </label>
       <label>Mot de passe (8 caractères min.)
-        <input id="champ-mot-de-passe" type="password" required minlength="8" autocomplete="new-password" />
+        <input id="champ-mot-de-passe" type="password" placeholder="••••••••" required minlength="8" autocomplete="new-password" />
       </label>
-      <button type="submit" id="bouton-inscription">Créer mon compte</button>
+      <button type="submit" id="bouton-inscription" class="btn btn-primary">Créer mon compte</button>
     </form>
 
     <p id="message-erreur" class="message-erreur" hidden></p>

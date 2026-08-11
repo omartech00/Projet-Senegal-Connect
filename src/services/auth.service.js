@@ -9,6 +9,7 @@ const env = require('../config/env');
 const ApiError = require('../utils/ApiError');
 const logger = require('../config/logger');
 const utilisateursModel = require('../models/utilisateurs.model');
+const clientsModel = require('../models/clients.model');
 
 const COUT_BCRYPT = 12; // exigence M2 : facteur de coût >= 12
 
@@ -22,8 +23,17 @@ async function inscrire({ nom, prenom, email, motDePasse }) {
   // un compte role="client", quoi que le body contienne — les comptes
   // agent/admin sont créés uniquement via seed SQL (docs/schema.sql).
   const motDePasseHache = await bcrypt.hash(motDePasse, COUT_BCRYPT);
+  const utilisateur = await utilisateursModel.creer({ nom, prenom, email, motDePasseHache, role: 'client' });
 
-  return utilisateursModel.creer({ nom, prenom, email, motDePasseHache, role: 'client' });
+  // La fiche "clients" est obligatoire pour ouvrir un ticket
+  // (tickets.service.js) et pour lister ses tickets. /auth/register
+  // n'expose volontairement pas de champ msisdn (décision Phase 30) :
+  // on génère donc un numéro déterministe et unique à partir de l'id
+  // utilisateur — l'admin pourra le corriger via /api/clients.
+  const msisdn = `+2217${String(utilisateur.id).padStart(8, '0')}`;
+  await clientsModel.creer({ utilisateur_id: utilisateur.id, msisdn });
+
+  return utilisateur;
 }
 
 function genererToken(utilisateur) {

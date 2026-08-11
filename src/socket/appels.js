@@ -17,6 +17,8 @@ module.exports = function enregistrerEvenementsAppels(io, socket) {
     try {
       const { appel, destinataireId } = await appelsService.initierAppel({ ticketId, utilisateur, type });
 
+      io.to(`ticket:${ticketId}`).emit('appel:historique', appel);
+
       io.to(`user:${destinataireId}`).emit('appel:entrant', {
         appelId: appel.id,
         initiateur: { id: utilisateur.id, nom: utilisateur.nom },
@@ -39,6 +41,8 @@ module.exports = function enregistrerEvenementsAppels(io, socket) {
     try {
       const appel = await appelsService.accepterAppel({ appelId, utilisateur });
 
+      io.to(`ticket:${appel.ticket_id}`).emit('appel:historique', appel);
+
       io.to(`user:${appel.initiateur_id}`).emit('appel:accepte', { peerId_dest: peerId, appelId: appel.id });
 
       logger.info(`[socket] Appel ${appel.id} accepté par utilisateur ${utilisateur.id}`);
@@ -53,6 +57,8 @@ module.exports = function enregistrerEvenementsAppels(io, socket) {
   socket.on('appel:refuser', async ({ appelId }, callback) => {
     try {
       const appel = await appelsService.refuserAppel({ appelId, utilisateur });
+
+      io.to(`ticket:${appel.ticket_id}`).emit('appel:historique', appel);
 
       io.to(`user:${appel.initiateur_id}`).emit('appel:refuse', { appelId: appel.id });
 
@@ -71,6 +77,8 @@ module.exports = function enregistrerEvenementsAppels(io, socket) {
   socket.on('appel:terminer', async ({ appelId }, callback) => {
     try {
       const appel = await appelsService.terminerAppel({ appelId, utilisateur });
+
+      io.to(`ticket:${appel.ticket_id}`).emit('appel:historique', appel);
 
       io.to(`user:${appel.initiateur_id}`).emit('appel:termine', { appelId: appel.id, duree_secondes: appel.duree_secondes });
       io.to(`user:${appel.destinataire_id}`).emit('appel:termine', { appelId: appel.id, duree_secondes: appel.duree_secondes });

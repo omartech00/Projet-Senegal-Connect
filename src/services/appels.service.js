@@ -40,13 +40,14 @@ async function initierAppel({ ticketId, utilisateur, type }) {
 
   const destinataireId = deduireDestinataire(ticket, utilisateur.id);
 
-  const appel = await appelsModel.creer({
+  const appelBrut = await appelsModel.creer({
     ticket_id: ticketId,
     initiateur_id: utilisateur.id,
     destinataire_id: destinataireId,
     type,
   });
 
+  const appel = await appelsModel.trouverParIdAvecNoms(appelBrut.id);
   return { appel, destinataireId };
 }
 
@@ -62,7 +63,7 @@ async function accepterAppel({ appelId, utilisateur }) {
   }
 
   const appelMaj = await appelsModel.mettreAJourStatut(appelId, 'accepte');
-  return appelMaj;
+  return appelsModel.trouverParIdAvecNoms(appelMaj.id);
 }
 
 async function refuserAppel({ appelId, utilisateur }) {
@@ -76,7 +77,7 @@ async function refuserAppel({ appelId, utilisateur }) {
     throw ApiError.conflit(`Impossible de refuser : statut actuel "${appel.statut}" (attendu "initie")`);
   }
 
-  return appelsModel.refuser(appelId);
+  return appelsModel.refuser(appelId).then((appel) => appelsModel.trouverParIdAvecNoms(appel.id));
 }
 
 async function terminerAppel({ appelId, utilisateur }) {
@@ -91,7 +92,8 @@ async function terminerAppel({ appelId, utilisateur }) {
     throw ApiError.conflit(`Cet appel est déjà terminé (statut : "${appel.statut}")`);
   }
 
-  return appelsModel.terminer(appelId);
+  const appelTermine = await appelsModel.terminer(appelId);
+  return appelsModel.trouverParIdAvecNoms(appelTermine.id);
 }
 
 /**

@@ -14,14 +14,17 @@ const { verifierJWT } = require('../middleware/auth');
 const validationInscription = [
   body('nom').trim().notEmpty().withMessage('Le nom est requis'),
   body('prenom').trim().notEmpty().withMessage('Le prénom est requis'),
-  body('email').isEmail().withMessage('Email invalide').normalizeEmail(),
+  // trim + toLowerCase sans normalizeEmail : normalizeEmail() supprime
+  // les points des adresses Gmail (ousmane.fall@gmail.com → ousmanefall...),
+  // ce qui empêchait la connexion des comptes stockés AVEC les points.
+  body('email').trim().toLowerCase().isEmail().withMessage('Email invalide'),
   body('mot_de_passe')
     .isLength({ min: 8 })
     .withMessage('Le mot de passe doit contenir au moins 8 caractères'),
 ];
 
 const validationConnexion = [
-  body('email').isEmail().withMessage('Email invalide').normalizeEmail(),
+  body('email').trim().toLowerCase().isEmail().withMessage('Email invalide'),
   body('mot_de_passe').notEmpty().withMessage('Le mot de passe est requis'),
 ];
 
