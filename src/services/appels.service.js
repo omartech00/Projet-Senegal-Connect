@@ -11,6 +11,11 @@ const appelsModel = require('../models/appels.model');
 const ticketsModel = require('../models/tickets.model');
 const ticketsService = require('./tickets.service');
 
+/** Statut initial d'un appel — "initie" (schéma actuel) ou "en_attente" (ancien schéma). */
+function estAppelEnAttente(statut) {
+  return statut === 'initie' || statut === 'en_attente';
+}
+
 /**
  * Détermine l'autre participant du ticket à partir de l'initiateur.
  * Lève une erreur si l'initiateur n'est ni le client ni l'agent
@@ -58,8 +63,8 @@ async function accepterAppel({ appelId, utilisateur }) {
   if (appel.destinataire_id !== utilisateur.id) {
     throw ApiError.interdit('Seul le destinataire peut accepter cet appel');
   }
-  if (appel.statut !== 'initie') {
-    throw ApiError.conflit(`Impossible d'accepter : statut actuel "${appel.statut}" (attendu "initie")`);
+  if (!estAppelEnAttente(appel.statut)) {
+    throw ApiError.conflit(`Impossible d'accepter : statut actuel "${appel.statut}" (attendu "initie" ou "en_attente")`);
   }
 
   const appelMaj = await appelsModel.mettreAJourStatut(appelId, 'accepte');
@@ -73,8 +78,8 @@ async function refuserAppel({ appelId, utilisateur }) {
   if (appel.destinataire_id !== utilisateur.id) {
     throw ApiError.interdit('Seul le destinataire peut refuser cet appel');
   }
-  if (appel.statut !== 'initie') {
-    throw ApiError.conflit(`Impossible de refuser : statut actuel "${appel.statut}" (attendu "initie")`);
+  if (!estAppelEnAttente(appel.statut)) {
+    throw ApiError.conflit(`Impossible de refuser : statut actuel "${appel.statut}" (attendu "initie" ou "en_attente")`);
   }
 
   return appelsModel.refuser(appelId).then((appel) => appelsModel.trouverParIdAvecNoms(appel.id));

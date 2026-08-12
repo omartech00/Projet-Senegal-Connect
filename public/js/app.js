@@ -694,6 +694,7 @@ function afficherMessage(message) {
 function formaterStatutAppel(statut) {
   return ({
     initie: 'en attente',
+    en_attente: 'en attente',
     accepte: 'accepté',
     refuse: 'refusé',
     termine: 'terminé',
