@@ -44,7 +44,8 @@ describe('Auth', () => {
       .mockResolvedValueOnce({ rows: [] }) // trouverParEmail : aucun doublon
       .mockResolvedValueOnce({
         rows: [{ id: 10, nom: 'Sow', prenom: 'Modou', email: 'modou.sow@example.sn', role: 'client', cree_le: new Date() }],
-      });
+      })
+      .mockResolvedValueOnce({ rows: [{ id: 1, utilisateur_id: 10, msisdn: '+221700000010', forfait_id: null, statut: 'actif', date_inscription: new Date() }] }); // clients.creer : fiche client auto-générée
 
     const reponse = await request(app).post('/api/auth/register').send({
       nom: 'Sow',

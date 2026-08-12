@@ -19,6 +19,18 @@ async function trouverParId(id) {
   return resultat.rows[0] || null;
 }
 
+async function trouverParIdAvecNoms(id) {
+  const resultat = await query(
+    `SELECT a.*, i.nom AS initiateur_nom, d.nom AS destinataire_nom
+     FROM appels a
+     JOIN utilisateurs i ON i.id = a.initiateur_id
+     JOIN utilisateurs d ON d.id = a.destinataire_id
+     WHERE a.id = $1`,
+    [id]
+  );
+  return resultat.rows[0] || null;
+}
+
 async function mettreAJourStatut(id, statut) {
   const resultat = await query(
     `UPDATE appels SET statut = $1 WHERE id = $2 RETURNING *`,
@@ -65,4 +77,4 @@ async function listerParTicket(ticketId) {
   return resultat.rows;
 }
 
-module.exports = { creer, trouverParId, mettreAJourStatut, refuser, terminer, listerParTicket };
+module.exports = { creer, trouverParId, trouverParIdAvecNoms, mettreAJourStatut, refuser, terminer, listerParTicket };

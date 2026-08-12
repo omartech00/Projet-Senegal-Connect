@@ -46,7 +46,9 @@
     "winston": "^3.19.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "eslint": "^10.8.0",
+    "globals": "^17.9.0",
     "jest": "^30.4.2",
     "nodemon": "^3.1.14",
     "peerjs": "^1.5.5",
@@ -57,6 +59,6 @@
     "brace-expansion": "5.0.8",
     "minimatch": "^10.0.0",
     "glob": "^11.0.0",
-    "test-exclude": "^7.0.1" 
+    "test-exclude": "^7.0.1"
   }
 }

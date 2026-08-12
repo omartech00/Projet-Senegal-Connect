@@ -4,21 +4,33 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Connexion — Sénégal Connect</title>
+  <meta name="theme-color" content="#070b16" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/app.css" />
 </head>
 <body class="fond-auth">
   <div class="carte-auth">
-    <h1>Sénégal Connect</h1>
-    <p class="sous-titre">Connexion à votre espace support</p>
+    <div class="marque">
+      <div class="logo">SC</div>
+      <div class="marque-texte">
+        <strong>Sénégal Connect</strong>
+        <span>Espace support client</span>
+      </div>
+    </div>
+
+    <h1>Bienvenue</h1>
+    <p class="sous-titre">Connectez-vous à votre espace support</p>
 
     <form id="formulaire-connexion">
-      <label>Email
-        <input id="champ-email" type="email" required autocomplete="username" />
+      <label>Adresse email
+        <input id="champ-email" type="email" placeholder="vous@exemple.com" required autocomplete="username" />
       </label>
       <label>Mot de passe
-        <input id="champ-mot-de-passe" type="password" required autocomplete="current-password" />
+        <input id="champ-mot-de-passe" type="password" placeholder="••••••••" required autocomplete="current-password" />
       </label>
-      <button type="submit" id="bouton-connexion">Se connecter</button>
+      <button type="submit" id="bouton-connexion" class="btn btn-primary">Se connecter</button>
     </form>
 
     <p id="message-erreur" class="message-erreur" hidden></p>
