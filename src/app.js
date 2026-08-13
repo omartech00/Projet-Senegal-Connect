@@ -34,7 +34,7 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-        'script-src': ["'self'"], // Plus besoin de CDN externes !
+        'script-src': ["'self'", "'unsafe-inline'"],
         'connect-src': [
           "'self'",
           'ws://localhost:3000', 
@@ -44,7 +44,8 @@ app.use(
           'wss://localhost:3001',
           'http://localhost:3001',
         ],
-        'media-src': ["'self'", 'blob:'], // Requis pour afficher les flux caméra
+        'media-src': ["'self'", 'blob:'],
+        'img-src': ["'self'", 'data:', 'blob:'],
       },
     },
   })

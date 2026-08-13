@@ -13,15 +13,15 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+      - "3001:3001" # Mappage du port PeerJS / WebRTC
     env_file:
       - .env
     environment:
-      # Prévaut sur la valeur "localhost" du .env local (développement
-      # hors Docker) — à l'intérieur du réseau Compose, PostgreSQL est
-      # joignable via son nom de service, résolu par le DNS interne.
       DB_HOST: postgres
       DB_PORT: 5432
       NODE_ENV: production
+      PORT: 3000
+      PEER_PORT: 3001
     volumes:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
@@ -41,8 +41,6 @@ services:
       POSTGRES_DB: ${DB_NAME}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # Exécuté automatiquement par l'image officielle UNE SEULE FOIS,
-      # uniquement si le volume pgdata est vide au premier démarrage.
       - ./docs/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
@@ -52,10 +50,6 @@ services:
       start_period: 5s
     networks:
       - senegal-connect-reseau
-    # Aucun port mappé vers l'hôte par défaut — PostgreSQL n'est
-    # accessible que depuis le réseau interne Docker (service "api").
-    # Pour un accès de debug ponctuel depuis la machine hôte, ajoute
-    # temporairement : ports: ["5433:5432"]
 
 networks:
   senegal-connect-reseau:
