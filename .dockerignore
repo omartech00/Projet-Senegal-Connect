@@ -10,7 +10,8 @@ uploads/*
 !uploads/.gitkeep
 coverage
 tests
-docs
+docs/*
+!docs/schema.sql
 *.md
 .nvmrc
 .eslintrc.json
