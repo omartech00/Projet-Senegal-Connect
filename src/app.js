@@ -93,6 +93,23 @@ app.use(
   swaggerUi.serve,
   swaggerUi.setup(specificationSwagger, {
     customSiteTitle: 'Sénégal Connect — Documentation API',
+    swaggerOptions: {
+      // Affiche les opérations immédiatement, sans noyer la page sous les
+      // schémas. Chaque opération reste entièrement interactive via Try it out.
+      docExpansion: 'list',
+      defaultModelsExpandDepth: 1,
+      defaultModelExpandDepth: 2,
+      displayRequestDuration: true,
+      persistAuthorization: true,
+    },
+    customCss: `
+      .swagger-ui .topbar { background-color: #006c54; }
+      .swagger-ui .topbar .download-url-wrapper .select-label select { border-color: #d7a900; }
+      .swagger-ui .info .title { color: #006c54; }
+      .swagger-ui .scheme-container { box-shadow: 0 1px 8px rgba(0, 0, 0, .10); }
+      .swagger-ui .opblock-tag { font-size: 1.25rem; }
+      .swagger-ui .opblock-tag small { font-size: .88rem; }
+    `,
   })
 );
 

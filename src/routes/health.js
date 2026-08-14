@@ -10,6 +10,25 @@ const router = express.Router();
 const { version } = require('../../package.json');
 const env = require('../config/env');
 
+/**
+ * @openapi
+ * /api/health:
+ *   get:
+ *     summary: Vérifier la disponibilité du service
+ *     description: >
+ *       Sonde légère utilisée par Docker et les outils de supervision. Elle
+ *       confirme que le processus Node.js répond ; elle ne dépend ni de
+ *       l’authentification ni de PostgreSQL.
+ *     tags: [Health]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Service disponible
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Health'
+ */
 router.get('/', (req, res) => {
   res.status(200).json({
     statut: 'ok',
