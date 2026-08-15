@@ -793,6 +793,21 @@ label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.82rem;
 .lien-secondaire a { color: var(--primaire-clair); text-decoration: none; font-weight: 600; }
 .lien-secondaire a:hover { text-decoration: underline; }
 
+/* ---------- Inscription : espace client télécom ---------- */
+.auth-inscription { width: min(980px, 100%); display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr); overflow: hidden; background: var(--surface); border: 1px solid var(--bordure); border-radius: 22px; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
+.auth-inscription-presentation { min-height: 590px; padding: 3rem; display: flex; flex-direction: column; align-items: flex-start; gap: 1.25rem; background: radial-gradient(circle at 18% 88%, rgba(34, 211, 238, .16), transparent 38%), radial-gradient(circle at 90% 8%, rgba(99, 102, 241, .22), transparent 42%), var(--bg-eleve); }
+.auth-inscription-presentation .marque { margin-bottom: 1.4rem; }
+.auth-inscription-presentation h1 { max-width: 410px; font-size: clamp(2rem, 3.4vw, 2.8rem); line-height: 1.08; }
+.auth-inscription-presentation > p { max-width: 390px; color: var(--texte-mute); font-size: 1rem; line-height: 1.65; }
+.auth-sur-titre { color: var(--primaire-clair); font-size: .72rem; font-weight: 800; letter-spacing: .18em; }
+.auth-avantages { display: grid; gap: .8rem; margin-top: auto; color: var(--texte-mute); font-size: .9rem; }
+.auth-avantages li { display: flex; align-items: center; gap: .65rem; }
+.auth-avantages li span { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: rgba(16, 185, 129, .14); color: #34d399; font-weight: 800; }
+.carte-inscription { width: auto; max-width: none; border: 0; border-radius: 0; box-shadow: none; justify-content: center; padding: 3rem; }
+.carte-inscription h2 { font-size: 1.7rem; }
+.carte-inscription .sous-titre { text-align: left; margin-top: -.5rem; line-height: 1.5; }
+.aide-champ { color: var(--texte-faible); font-weight: 400; }
+
 /* ---------- Accessibilité ---------- */
 .sr-only { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
 
@@ -831,4 +846,12 @@ label { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.82rem;
   .message-bulle { max-width: 85%; }
   .zone-saisie { flex-wrap: wrap; }
   .zone-saisie #champ-message { min-width: 130px; }
+  .auth-inscription { grid-template-columns: 1fr; border-radius: 18px; }
+  .auth-inscription-presentation { min-height: auto; padding: 1.8rem; gap: .9rem; }
+  .auth-inscription-presentation .marque { margin-bottom: .5rem; }
+  .auth-inscription-presentation h1 { font-size: 1.7rem; }
+  .auth-avantages { margin-top: .5rem; gap: .55rem; font-size: .82rem; }
+  .carte-inscription { padding: 1.8rem; }
+  .carte-inscription h2 { font-size: 1.45rem; }
+  .carte-inscription .ligne-double { grid-template-columns: 1fr; }
 }
