@@ -34,6 +34,8 @@ let clientsTous = [];
 let forfaitsTous = [];
 let facturesTous = [];
 let statsCache = null;
+let monCompteClient = null;
+let mesFactures = [];
 
 const $ = (id) => document.getElementById(id);
 
@@ -211,6 +213,7 @@ async function initialiser() {
   chargerClients();
   chargerFactures();
   chargerStats();
+  chargerEspaceClient();
 
   afficherOnglet('dashboard');
 }
@@ -255,6 +258,21 @@ async function chargerStats() {
   renderDashboard();
 }
 
+async function chargerEspaceClient() {
+  if (roleUtilisateur !== 'client') return;
+  try {
+    const [compte, factures] = await Promise.all([
+      SenegalConnectAPI.appelApi('/api/clients/me'),
+      SenegalConnectAPI.appelApi('/api/factures?limite=20'),
+    ]);
+    monCompteClient = compte.client;
+    mesFactures = factures.data;
+  } catch (erreur) {
+    afficherToast(erreur.message || 'Impossible de charger votre espace client', true);
+  }
+  renderDashboard();
+}
+
 function renderKpi() {
   const conteneur = $('kpi-cartes');
   let cartes = '';
@@ -273,13 +291,15 @@ function renderKpi() {
     cartes += carteKpi('Clients actifs', actifs, `Sur ${clientsTous.length} clients`, 3);
     cartes += carteKpi('Forfaits actifs', forfaitsTous.filter((f) => f.actif).length, 'Catalogue commercial', 4);
   } else {
+    const forfait = monCompteClient?.forfait_nom || 'Aucun forfait';
+    const facturesARegler = mesFactures.filter((facture) => facture.statut !== 'payee');
+    const montantARegler = facturesARegler.reduce((total, facture) => total + Number(facture.montant_fcfa || 0), 0);
+    const derniereFacture = mesFactures[0];
     const ouverts = ticketsTous.filter((t) => t.statut === 'ouvert').length;
-    const enCours = ticketsTous.filter((t) => t.statut === 'en_cours').length;
-    const fermes = ticketsTous.filter((t) => t.statut === 'ferme').length;
-    cartes += carteKpi('Tickets ouverts', ouverts, 'En attente', 1);
-    cartes += carteKpi('Tickets en cours', enCours, 'En traitement', 2);
-    cartes += carteKpi('Tickets fermés', fermes, 'Historique', 3);
-    cartes += carteKpi('Forfaits disponibles', forfaitsTous.length, 'Catalogue', 4);
+    cartes += carteKpi('Mon forfait', forfait, monCompteClient?.statut || 'Chargement…', 1);
+    cartes += carteKpi('Factures à régler', facturesARegler.length, `${formatPrix(montantARegler)} FCFA`, 2);
+    cartes += carteKpi('Dernière facture', derniereFacture?.reference || 'Aucune', derniereFacture ? `${formatPrix(derniereFacture.montant_fcfa)} FCFA` : 'Aucune facture émise', 3);
+    cartes += carteKpi('Tickets ouverts', ouverts, 'En attente de traitement', 4);
   }
 
   conteneur.innerHTML = cartes;
@@ -364,15 +384,41 @@ function renderResumes() {
     ]));
   }
 
-  const prixMoyen = forfaitsTous.length
-    ? forfaitsTous.reduce((acc, f) => acc + Number(f.prix_mensuel_fcfa || 0), 0) / forfaitsTous.length
-    : 0;
-  blocs.push(blocResume('Forfaits', [
-    resumeCard('Offres', forfaitsTous.length, 'Catalogue disponible'),
-    resumeCard('Actifs', forfaitsTous.filter((f) => f.actif).length, 'Commercialisés'),
-    resumeCard('Abonnés', forfaitsTous.reduce((acc, f) => acc + Number(f.nb_clients || 0), 0), 'Tous statuts confondus'),
-    resumeCard('Prix moyen', `${formatPrix(prixMoyen)} FCFA`, 'Roll-up tarifaire'),
-  ]));
+  if (roleUtilisateur === 'client') {
+    const forfait = monCompteClient;
+    const facturesARegler = mesFactures.filter((facture) => facture.statut !== 'payee');
+    const montantARegler = facturesARegler.reduce((total, facture) => total + Number(facture.montant_fcfa || 0), 0);
+    const dernieresFactures = mesFactures.slice(0, 4);
+    const listeFactures = dernieresFactures.length
+      ? dernieresFactures.map((facture) => `
+          <div class="summary-stat">
+            <span class="label-stat">${echapper(facture.reference)}</span>
+            <strong>${formatPrix(facture.montant_fcfa)} FCFA</strong>
+            <div class="meta">${echapper(facture.periode)} · échéance ${formaterDate(facture.date_echeance)} · ${badgeHtml(facture.statut)}</div>
+          </div>`)
+        : [resumeCard('Aucune facture', '—', 'Vous serez informé dès qu’une facture sera émise')];
+
+    blocs.push(blocResume('Mon forfait', [
+      resumeCard('Forfait', forfait?.forfait_nom || 'Aucun forfait', forfait ? `${formatPrix(forfait.forfait_prix_fcfa)} FCFA / mois` : 'Contactez le support pour souscrire'),
+      resumeCard('Internet', forfait?.forfait_nom ? `${forfait.forfait_quota_data_go} Go` : '—', 'Quota mensuel'),
+      resumeCard('Appels', forfait?.forfait_nom ? `${forfait.forfait_quota_voix_min} min` : '—', 'Quota mensuel'),
+      resumeCard('Statut de ligne', formaterStatut(forfait?.statut || 'inconnu'), forfait?.msisdn || '—'),
+    ]));
+    blocs.push(blocResume(`Mes factures (${mesFactures.length})`, [
+      resumeCard('À régler', `${formatPrix(montantARegler)} FCFA`, `${facturesARegler.length} facture(s) impayée(s) ou en retard`),
+      ...listeFactures,
+    ]));
+  } else {
+    const prixMoyen = forfaitsTous.length
+      ? forfaitsTous.reduce((acc, f) => acc + Number(f.prix_mensuel_fcfa || 0), 0) / forfaitsTous.length
+      : 0;
+    blocs.push(blocResume('Forfaits', [
+      resumeCard('Offres', forfaitsTous.length, 'Catalogue disponible'),
+      resumeCard('Actifs', forfaitsTous.filter((f) => f.actif).length, 'Commercialisés'),
+      resumeCard('Abonnés', forfaitsTous.reduce((acc, f) => acc + Number(f.nb_clients || 0), 0), 'Tous statuts confondus'),
+      resumeCard('Prix moyen', `${formatPrix(prixMoyen)} FCFA`, 'Roll-up tarifaire'),
+    ]));
+  }
 
   if (roleUtilisateur === 'admin') {
     blocs.push(blocResume('Factures', [
@@ -449,7 +495,12 @@ function connecterSocket() {
     minuteurMasquageFrappe = setTimeout(() => { $('indicateur-frappe').textContent = ''; }, 2500);
   });
 
-  socket.on('notification:push', (notif) => afficherToast(notif.message));
+  socket.on('notification:push', (notif) => {
+    afficherToast(notif.message);
+    if (roleUtilisateur === 'client' && ['facture_emise', 'facture_en_retard'].includes(notif.type)) {
+      chargerEspaceClient();
+    }
+  });
 
   socket.on('appel:entrant', async ({ appelId, initiateur, peerId_init, type }) => {
     appelIdActuel = appelId;
@@ -962,7 +1013,15 @@ function afficherResumeClients(clients) {
 $('recherche-clients').addEventListener('input', () => renderClientsTable(clientsTous));
 $('filtre-client-statut').addEventListener('change', () => renderClientsTable(clientsTous));
 
-function ouvrirModalNouveauClient() {
+async function ouvrirModalNouveauClient() {
+  if (!forfaitsTous.length) {
+    await chargerForfaits();
+    if (!forfaitsTous.length) {
+      afficherToast('Aucun forfait disponible pour créer ce client.', true);
+      return;
+    }
+  }
+
   const optionsForfaits = forfaitsTous
     .map((f) => `<option value="${f.id}">${echapper(f.nom)} — ${formatPrix(f.prix_mensuel_fcfa)} FCFA</option>`)
     .join('');
@@ -975,7 +1034,7 @@ function ouvrirModalNouveauClient() {
       <label>Nom<input id="nc-nom" /></label>
       <label>Email<input id="nc-email" type="email" /></label>
       <label>Mot de passe (8 caractères min.)<input id="nc-mdp" type="password" minlength="8" /></label>
-      <label>MSISDN<input id="nc-msisdn" placeholder="+221XXXXXXXXX" /></label>
+      <label>MSISDN<input id="nc-msisdn" type="tel" inputmode="numeric" autocomplete="tel" placeholder="221771234567 ou +221771234567" /></label>
       <label>Forfait
         <select id="nc-forfait">
           <option value="">Aucun forfait</option>
@@ -997,12 +1056,27 @@ function ouvrirModalNouveauClient() {
   valider.className = 'btn btn-primary';
   valider.textContent = 'Créer le client';
   valider.addEventListener('click', async () => {
+    const champMsisdn = $('nc-msisdn');
+    const chiffresMsisdn = champMsisdn.value.replace(/\D/g, '');
+    const msisdn = chiffresMsisdn.length === 9
+      ? `+221${chiffresMsisdn}`
+      : chiffresMsisdn.startsWith('221')
+        ? `+${chiffresMsisdn}`
+        : champMsisdn.value.trim();
+
+    champMsisdn.setCustomValidity('');
+    if (!/^\+221\d{9}$/.test(msisdn)) {
+      champMsisdn.setCustomValidity('Saisissez 9 chiffres sénégalais, avec ou sans le préfixe 221.');
+      champMsisdn.reportValidity();
+      return;
+    }
+
     const donnees = {
       prenom: $('nc-prenom').value.trim(),
       nom: $('nc-nom').value.trim(),
       email: $('nc-email').value.trim(),
       mdp: $('nc-mdp').value,
-      msisdn: $('nc-msisdn').value.trim(),
+      msisdn,
       forfait_id: $('nc-forfait').value ? Number($('nc-forfait').value) : null,
       statut: $('nc-statut').value,
     };
@@ -1013,20 +1087,13 @@ function ouvrirModalNouveauClient() {
     }
 
     try {
-      const { utilisateur: utilisateurCree } = await SenegalConnectAPI.appelApi('/api/auth/register', {
+      const { client: clientCree } = await SenegalConnectAPI.appelApi('/api/clients/creation-complete', {
         method: 'POST',
         body: JSON.stringify({
           nom: donnees.nom,
           prenom: donnees.prenom,
           email: donnees.email,
           mot_de_passe: donnees.mdp,
-        }),
-      });
-
-      await SenegalConnectAPI.appelApi('/api/clients', {
-        method: 'POST',
-        body: JSON.stringify({
-          utilisateur_id: utilisateurCree.id,
           msisdn: donnees.msisdn,
           forfait_id: donnees.forfait_id,
           statut: donnees.statut,
@@ -1034,10 +1101,14 @@ function ouvrirModalNouveauClient() {
       });
 
       fermerModale();
-      afficherToast('Client créé avec succès');
+      afficherToast(`Client créé : ${clientCree.msisdn}${donnees.forfait_id ? ' avec le forfait sélectionné' : ''}.`);
       chargerClients();
     } catch (erreur) {
-      afficherToast(erreur.message, true);
+      const details = erreur.erreurs
+        ?.map((detail) => detail.message)
+        .filter(Boolean)
+        .join(' — ');
+      afficherToast(details || erreur.message, true);
     }
   });
 

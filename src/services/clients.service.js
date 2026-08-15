@@ -5,6 +5,8 @@
 // en cours). Ne connaît jamais req/res.
 
 const ApiError = require('../utils/ApiError');
+const bcrypt = require('bcryptjs');
+const { transaction } = require('../config/db');
 const { reponsePaginee } = require('../utils/ApiResponse');
 const clientsModel = require('../models/clients.model');
 const utilisateursModel = require('../models/utilisateurs.model');
@@ -60,6 +62,60 @@ async function creerClient({ utilisateur_id, msisdn, forfait_id, statut }) {
   }
 }
 
+async function obtenirMonClient(utilisateurId) {
+  const client = await clientsModel.trouverParUtilisateurIdAvecDetails(utilisateurId);
+  if (!client) throw ApiError.introuvable('Aucune fiche client associée à ce compte');
+  return client;
+}
+
+/**
+ * Création réservée à l'administration : compte utilisateur et fiche client
+ * sont enregistrés dans la même transaction. Ainsi, le MSISDN et le forfait
+ * sélectionnés dans le formulaire ne sont jamais remplacés par la fiche
+ * automatique créée lors d'une inscription publique.
+ */
+async function creerClientComplet({ nom, prenom, email, mot_de_passe, msisdn, forfait_id, statut }) {
+  const motDePasseHache = await bcrypt.hash(mot_de_passe, 12);
+
+  try {
+    return await transaction(async (clientDb) => {
+      const emailExistant = await clientDb.query('SELECT id FROM utilisateurs WHERE email = $1', [email]);
+      if (emailExistant.rows[0]) {
+        throw ApiError.conflit('Un compte existe déjà avec cet email');
+      }
+
+      if (forfait_id) {
+        const forfait = await clientDb.query('SELECT id FROM forfaits WHERE id = $1', [forfait_id]);
+        if (!forfait.rows[0]) {
+          throw ApiError.donneesInvalides([{ champ: 'forfait_id', message: 'Forfait introuvable', valeur: forfait_id }]);
+        }
+      }
+
+      const utilisateurResultat = await clientDb.query(
+        `INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, role)
+         VALUES ($1, $2, $3, $4, 'client')
+         RETURNING id, nom, prenom, email, role, cree_le`,
+        [nom, prenom, email, motDePasseHache]
+      );
+      const utilisateur = utilisateurResultat.rows[0];
+
+      const clientResultat = await clientDb.query(
+        `INSERT INTO clients (utilisateur_id, msisdn, forfait_id, statut)
+         VALUES ($1, $2, $3, COALESCE($4, 'actif'))
+         RETURNING *`,
+        [utilisateur.id, msisdn, forfait_id || null, statut || null]
+      );
+
+      return { utilisateur, client: clientResultat.rows[0] };
+    });
+  } catch (erreur) {
+    if (erreur.code === '23505') {
+      throw ApiError.conflit('Cet email ou ce MSISDN est déjà utilisé');
+    }
+    throw erreur;
+  }
+}
+
 async function modifierClient(id, { msisdn, forfait_id }) {
   const client = await clientsModel.trouverParId(id);
   if (!client) throw ApiError.introuvable('Client introuvable');
@@ -108,7 +164,9 @@ async function supprimerClient(id) {
 module.exports = {
   listerClients,
   obtenirDetailClient,
+  obtenirMonClient,
   creerClient,
+  creerClientComplet,
   modifierClient,
   changerStatutClient,
   supprimerClient,

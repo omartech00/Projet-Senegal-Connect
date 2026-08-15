@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Inscription — Sénégal Connect</title>
+  <title>Créer mon espace client — Sénégal Connect</title>
   <meta name="theme-color" content="#070b16" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,36 +11,49 @@
   <link rel="stylesheet" href="css/app.css" />
 </head>
 <body class="fond-auth">
-  <div class="carte-auth">
-    <div class="marque">
-      <div class="logo">SC</div>
-      <div class="marque-texte">
-        <strong>Sénégal Connect</strong>
-        <span>Espace support client</span>
+  <main class="auth-inscription">
+    <section class="auth-inscription-presentation" aria-label="Avantages de l'espace client">
+      <div class="marque">
+        <div class="logo">SC</div>
+        <div class="marque-texte">
+          <strong>Sénégal Connect</strong>
+          <span>Votre espace client télécom</span>
+        </div>
       </div>
-    </div>
+      <span class="auth-sur-titre">ESPACE CLIENT</span>
+      <h1>Votre ligne, vos services, au même endroit.</h1>
+      <p>Créez votre accès personnel pour suivre simplement vos services Sénégal Connect.</p>
+      <ul class="auth-avantages">
+        <li><span aria-hidden="true">✓</span> Consultez le forfait attribué à votre ligne</li>
+        <li><span aria-hidden="true">✓</span> Retrouvez vos factures et leurs échéances</li>
+        <li><span aria-hidden="true">✓</span> Échangez avec le support en temps réel</li>
+      </ul>
+    </section>
 
-    <h1>Créer un compte</h1>
-    <p class="sous-titre">Rejoignez votre espace support</p>
+    <section class="carte-auth carte-inscription">
+      <span class="auth-sur-titre">CRÉATION DE COMPTE</span>
+      <h2>Créer mon espace client</h2>
+      <p class="sous-titre">Renseignez vos informations pour accéder à votre suivi personnel.</p>
 
-    <form id="formulaire-inscription">
-      <div class="ligne-double">
-        <label>Prénom<input id="champ-prenom" placeholder="Aminata" required /></label>
-        <label>Nom<input id="champ-nom" placeholder="Diallo" required /></label>
-      </div>
-      <label>Adresse email
-        <input id="champ-email" type="email" placeholder="vous@exemple.com" required autocomplete="username" />
-      </label>
-      <label>Mot de passe (8 caractères min.)
-        <input id="champ-mot-de-passe" type="password" placeholder="••••••••" required minlength="8" autocomplete="new-password" />
-      </label>
-      <button type="submit" id="bouton-inscription" class="btn btn-primary">Créer mon compte</button>
-    </form>
+      <form id="formulaire-inscription">
+        <div class="ligne-double">
+          <label>Prénom<input id="champ-prenom" placeholder="Aminata" required autocomplete="given-name" /></label>
+          <label>Nom<input id="champ-nom" placeholder="Diallo" required autocomplete="family-name" /></label>
+        </div>
+        <label>Adresse email
+          <input id="champ-email" type="email" placeholder="vous@exemple.com" required autocomplete="email" />
+        </label>
+        <label>Mot de passe <span class="aide-champ">8 caractères minimum</span>
+          <input id="champ-mot-de-passe" type="password" placeholder="Choisissez un mot de passe sécurisé" required minlength="8" autocomplete="new-password" />
+        </label>
+        <button type="submit" id="bouton-inscription" class="btn btn-primary">Créer mon espace client</button>
+      </form>
 
-    <p id="message-erreur" class="message-erreur" hidden></p>
-    <p id="message-succes" class="message-succes" hidden></p>
-    <p class="lien-secondaire">Déjà un compte ? <a href="login.html">Se connecter</a></p>
-  </div>
+      <p id="message-erreur" class="message-erreur" hidden></p>
+      <p id="message-succes" class="message-succes" hidden></p>
+      <p class="lien-secondaire">Vous avez déjà un espace client ? <a href="login.html">Se connecter</a></p>
+    </section>
+  </main>
 
   <script src="js/api.js"></script>
   <script src="js/register.js"></script>

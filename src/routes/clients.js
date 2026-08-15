@@ -19,6 +19,16 @@ const validationCreation = [
   body('statut').optional().isIn(['actif', 'suspendu', 'resilie']).withMessage('Statut invalide'),
 ];
 
+const validationCreationComplete = [
+  body('nom').trim().notEmpty().withMessage('Le nom est requis'),
+  body('prenom').trim().notEmpty().withMessage('Le prénom est requis'),
+  body('email').trim().toLowerCase().isEmail().withMessage('Email invalide'),
+  body('mot_de_passe').isLength({ min: 8 }).withMessage('Le mot de passe doit contenir au moins 8 caractères'),
+  body('msisdn').matches(REGEX_MSISDN).withMessage('Format attendu : +221XXXXXXXXX'),
+  body('forfait_id').optional({ nullable: true }).isInt().withMessage('forfait_id doit être un entier'),
+  body('statut').optional().isIn(['actif', 'suspendu', 'resilie']).withMessage('Statut invalide'),
+];
+
 const validationModification = [
   body('msisdn').matches(REGEX_MSISDN).withMessage('Format attendu : +221XXXXXXXXX'),
   body('forfait_id').optional().isInt().withMessage('forfait_id doit être un entier'),
@@ -67,6 +77,8 @@ const validationId = [param('id').isInt().withMessage('id doit être un entier')
  *                 pagination: { $ref: '#/components/schemas/Pagination' }
  */
 router.get('/', verifierJWT, asyncHandler(clientsController.lister));
+
+router.get('/me', verifierJWT, asyncHandler(clientsController.monCompte));
 
 /**
  * @openapi
@@ -121,6 +133,10 @@ router.get('/:id', verifierJWT, validationId, asyncHandler(clientsController.det
  *             schema: { $ref: '#/components/schemas/Erreur' }
  */
 router.post('/', verifierJWT, garderRole('admin'), validationCreation, asyncHandler(clientsController.creer));
+
+// Cette route évite l'inscription publique : elle crée dans une transaction
+// le compte et la fiche client avec le MSISDN et le forfait choisis par l'admin.
+router.post('/creation-complete', verifierJWT, garderRole('admin'), validationCreationComplete, asyncHandler(clientsController.creerComplet));
 
 /**
  * @openapi

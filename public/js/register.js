@@ -35,13 +35,13 @@ formulaire.addEventListener('submit', async (evenement) => {
       const details = donnees.erreurs ? donnees.erreurs.map((e) => e.message).join(' — ') : donnees.message;
       throw new Error(details);
     }
-    messageSucces.textContent = 'Compte créé ! Redirection vers la connexion...';
+    messageSucces.textContent = 'Votre espace client est créé. Redirection vers la connexion…';
     messageSucces.hidden = false;
     setTimeout(() => { window.location.href = 'login.html'; }, 1500);
   } catch (erreur) {
     messageErreur.textContent = erreur.message;
     messageErreur.hidden = false;
     boutonInscription.disabled = false;
-    boutonInscription.textContent = 'Créer mon compte';
+    boutonInscription.textContent = 'Créer mon espace client';
   }
 });
