@@ -10,7 +10,8 @@ const SELECT_BASE = `
   SELECT
     c.id, c.utilisateur_id, c.msisdn, c.forfait_id, c.statut, c.date_inscription,
     u.nom, u.prenom, u.email,
-    f.nom AS forfait_nom, f.prix_mensuel_fcfa AS forfait_prix_fcfa
+    f.nom AS forfait_nom, f.prix_mensuel_fcfa AS forfait_prix_fcfa,
+    f.quota_data_go AS forfait_quota_data_go, f.quota_voix_min AS forfait_quota_voix_min
   FROM clients c
   JOIN utilisateurs u ON u.id = c.utilisateur_id
   LEFT JOIN forfaits f ON f.id = c.forfait_id
@@ -72,6 +73,11 @@ async function trouverParId(id) {
 
 async function trouverParUtilisateurId(utilisateurId) {
   const resultat = await query('SELECT * FROM clients WHERE utilisateur_id = $1', [utilisateurId]);
+  return resultat.rows[0] || null;
+}
+
+async function trouverParUtilisateurIdAvecDetails(utilisateurId) {
+  const resultat = await query(`${SELECT_BASE} WHERE c.utilisateur_id = $1`, [utilisateurId]);
   return resultat.rows[0] || null;
 }
 
@@ -138,6 +144,7 @@ module.exports = {
   lister,
   trouverParId,
   trouverParUtilisateurId,
+  trouverParUtilisateurIdAvecDetails,
   trouverDerniereFacture,
   trouverTicketEnCours,
   aFacturesImpayees,

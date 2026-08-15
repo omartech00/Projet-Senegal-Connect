@@ -12,12 +12,12 @@ function formaterErreursValidation(req) {
 }
 
 async function lister(req, res) {
-  const resultat = await facturesService.listerFactures(req.query);
+  const resultat = await facturesService.listerFactures(req.query, req.user);
   res.status(200).json(resultat);
 }
 
 async function detail(req, res) {
-  const facture = await facturesService.obtenirFacture(req.params.id);
+  const facture = await facturesService.obtenirFacture(req.params.id, req.user);
   res.status(200).json({ facture });
 }
 

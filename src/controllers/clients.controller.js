@@ -30,6 +30,19 @@ async function creer(req, res) {
   res.status(201).json({ client });
 }
 
+async function monCompte(req, res) {
+  const client = await clientsService.obtenirMonClient(req.user.id);
+  res.status(200).json({ client });
+}
+
+async function creerComplet(req, res) {
+  const erreurs = formaterErreursValidation(req);
+  if (erreurs) throw ApiError.donneesInvalides(erreurs);
+
+  const resultat = await clientsService.creerClientComplet(req.body);
+  res.status(201).json(resultat);
+}
+
 async function modifier(req, res) {
   const erreurs = formaterErreursValidation(req);
   if (erreurs) throw ApiError.donneesInvalides(erreurs);
@@ -51,4 +64,4 @@ async function supprimer(req, res) {
   res.status(204).send();
 }
 
-module.exports = { lister, detail, creer, modifier, changerStatut, supprimer };
+module.exports = { lister, detail, monCompte, creer, creerComplet, modifier, changerStatut, supprimer };

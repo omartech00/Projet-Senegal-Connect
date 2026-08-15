@@ -10,10 +10,18 @@ const clientsModel = require('../models/clients.model');
 const notifications = require('../socket/notifications');
 
 
-async function listerFactures({ client_id, statut, periode, page, limite }) {
+async function listerFactures({ client_id, statut, periode, page, limite }, utilisateur) {
   const pageNum = parseInt(page, 10) || 1;
   const limiteNum = parseInt(limite, 10) || 20;
   const filtres = { client_id, statut, periode };
+
+  // Un client ne peut consulter que ses propres factures, quel que soit
+  // l'éventuel client_id ajouté manuellement à la requête.
+  if (utilisateur?.role === 'client') {
+    const client = await clientsModel.trouverParUtilisateurId(utilisateur.id);
+    if (!client) throw ApiError.introuvable('Aucune fiche client associée à ce compte');
+    filtres.client_id = client.id;
+  }
   const [total, data] = await Promise.all([
     facturesModel.compter(filtres),
     facturesModel.lister(filtres, { page: pageNum, limite: limiteNum }),
@@ -21,9 +29,13 @@ async function listerFactures({ client_id, statut, periode, page, limite }) {
   return reponsePaginee(data, { total, page: pageNum, limite: limiteNum });
 }
 
-async function obtenirFacture(id) {
+async function obtenirFacture(id, utilisateur) {
   const facture = await facturesModel.trouverParId(id);
   if (!facture) throw ApiError.introuvable('Facture introuvable');
+  if (utilisateur?.role === 'client') {
+    const client = await clientsModel.trouverParUtilisateurId(utilisateur.id);
+    if (!client || facture.client_id !== client.id) throw ApiError.interdit('Cette facture ne vous appartient pas');
+  }
   return facture;
 }
 
